@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the in-app splash background (lib/features/splash/splash_screen.dart) -->
+    <color name="splash_background">#FBFAF6</color>
+</resources>

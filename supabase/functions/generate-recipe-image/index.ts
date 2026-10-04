@@ -69,10 +69,10 @@ Deno.serve(async (req) => {
 
   const work = (async () => {
     try {
-      const png = await generateImage(promptFor(recipe.name, ingredients));
-      const path = `${recipe.list_id}/${recipe.id}/${crypto.randomUUID()}.png`;
-      const { error: upErr } = await admin.storage.from(BUCKET).upload(path, png, {
-        contentType: "image/png",
+      const image = await generateImage(promptFor(recipe.name, ingredients));
+      const path = `${recipe.list_id}/${recipe.id}/${crypto.randomUUID()}.webp`;
+      const { error: upErr } = await admin.storage.from(BUCKET).upload(path, image, {
+        contentType: "image/webp",
         cacheControl: "31536000",
       });
       if (upErr) throw upErr;

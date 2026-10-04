@@ -27,12 +27,15 @@ const schema = {
         additionalProperties: false,
         required: ["name", "quantity", "reason", "severity"],
         properties: {
-          name: { type: "string", description: "Short grocery-list name, e.g. 'Jasmine rice'" },
+          name: {
+            type: "string",
+            description: "One specific grocery item, 1-3 words, e.g. 'Jasmine rice'. Never 'X or Y'.",
+          },
           quantity: {
             type: ["string", "null"],
-            description: "Rough shopping quantity for ~4 servings, e.g. '2 cups', '1 bunch'; null if obvious",
+            description: "Shopping quantity for ~4 servings, at most 3 words, e.g. '2 cups', '1 bunch', '1 lb'; null if obvious",
           },
-          reason: { type: "string", description: "One short sentence, max ~12 words" },
+          reason: { type: "string", description: "A short phrase, at most 8 words" },
           severity: { type: "string", enum: ["missing", "optional"] },
         },
       },
@@ -49,7 +52,8 @@ Point out ingredients they are probably forgetting.
 - Treat the user's items generously: "chicken thighs" covers chicken, "cotija" covers cheese, etc. Never suggest something they already have under another name.
 - Assume a normal kitchen has salt, pepper, water and cooking oil; do not suggest those.
 - Never suggest anything in the dismissed list.
-- If the list already looks complete, return an empty array. Silence is better than noise.`;
+- If the list already looks complete, return an empty array. Silence is better than noise.
+Style: each suggestion is ONE specific item (pick the most typical, e.g. "Jasmine rice", not "Brown rice or quinoa"). Names 1-3 words. Quantities at most 3 words ("2 cups", "1 bottle"), no parentheses or ranges. Reasons are a short phrase.`;
 
 const AUTOFILL_SYSTEM = `You help people build grocery lists for meals they plan to cook.
 Given a meal name (and maybe a few ingredients already chosen), list the remaining groceries needed to make it for about 4 people.
@@ -58,7 +62,8 @@ Given a meal name (and maybe a few ingredients already chosen), list the remaini
 - Use short grocery-list names ("Red onion", "Jasmine rice"), not recipe steps.
 - Don't repeat ingredients the user already has (even under another name) or anything in the dismissed list.
 - Assume a normal kitchen has salt, pepper, water and cooking oil; do not list those.
-- Keep it to what a typical home cook would buy: usually 5-12 items.`;
+- Keep it to what a typical home cook would buy: usually 5-12 items.
+Style: each suggestion is ONE specific item (pick the most typical, e.g. "Jasmine rice", not "Brown rice or quinoa"). Names 1-3 words. Quantities at most 3 words ("2 cups", "1 bottle"), no parentheses or ranges. Reasons are a short phrase.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

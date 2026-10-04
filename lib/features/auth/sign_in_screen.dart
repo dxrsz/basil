@@ -34,9 +34,17 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     // Apple first on iOS, per Apple's guidelines.
-    final providers = Platform.isIOS
+    final order = Platform.isIOS
         ? [OAuthProvider.apple, OAuthProvider.google]
         : [OAuthProvider.google, OAuthProvider.apple];
+    // Only offer providers that are switched on in Supabase. If the check
+    // fails (e.g. offline), show them all rather than none.
+    final enabled = ref.watch(enabledProvidersProvider);
+    final providers = switch (enabled) {
+      AsyncData(:final value) => order.where(value.contains).toList(),
+      AsyncError() => order,
+      _ => const <OAuthProvider>[],
+    };
 
     return Scaffold(
       body: SafeArea(
@@ -68,6 +76,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               const _Feature(icon: Icons.restaurant_menu, text: 'Turn meals into lists in one tap'),
               const _Feature(icon: Icons.auto_awesome_outlined, text: 'Catch the ingredient you forgot'),
               const Spacer(flex: 3),
+              if (enabled.isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 17),
+                  child: Center(child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                ),
               for (final p in providers) ...[
                 _ProviderButton(
                   provider: p,

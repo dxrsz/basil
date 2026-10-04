@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config.dart';
@@ -24,6 +27,25 @@ class Repository {
   }
 
   Future<void> signOut() => _db.auth.signOut();
+
+  /// OAuth providers switched on in the Supabase dashboard, so the sign-in
+  /// screen only offers ones that will work (e.g. Apple before it's set up).
+  static Future<Set<OAuthProvider>> enabledProviders() async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+    try {
+      final req = await client.getUrl(Uri.parse('${Config.supabaseUrl}/auth/v1/settings'));
+      req.headers.set('apikey', Config.supabaseKey);
+      final res = await req.close();
+      final body = jsonDecode(await res.transform(utf8.decoder).join()) as Map<String, dynamic>;
+      final external = (body['external'] as Map<String, dynamic>?) ?? const {};
+      return {
+        for (final p in const [OAuthProvider.apple, OAuthProvider.google])
+          if (external[p.name] == true) p,
+      };
+    } finally {
+      client.close();
+    }
+  }
 
   // ----------------------------------------------------------------- lists
 

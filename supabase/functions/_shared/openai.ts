@@ -2,6 +2,11 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 export const TEXT_MODEL = Deno.env.get("OPENAI_TEXT_MODEL") ?? "gpt-5-mini";
 export const IMAGE_MODEL = Deno.env.get("OPENAI_IMAGE_MODEL") ?? "gpt-image-1";
 
+// Grocery suggestions don't need deep reasoning; the default effort made each
+// call take ~15 s. Only sent to reasoning models, which accept the parameter.
+const REASONING_EFFORT = Deno.env.get("OPENAI_REASONING_EFFORT") ?? "minimal";
+const isReasoningModel = /^(gpt-5|o\d)/.test(TEXT_MODEL);
+
 async function openai(path: string, body: unknown): Promise<any> {
   if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not set");
   const res = await fetch(`https://api.openai.com/v1/${path}`, {
@@ -35,19 +40,22 @@ export async function structured<T>(
       type: "json_schema",
       json_schema: { name: schemaName, strict: true, schema },
     },
+    ...(isReasoningModel ? { reasoning_effort: REASONING_EFFORT } : {}),
   });
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error("OpenAI returned no content");
   return JSON.parse(content) as T;
 }
 
-/** Generates one square image and returns its PNG bytes. */
+/** Generates one square image and returns its WebP bytes (~10x smaller than PNG). */
 export async function generateImage(prompt: string): Promise<Uint8Array> {
   const data = await openai("images/generations", {
     model: IMAGE_MODEL,
     prompt,
     size: "1024x1024",
     quality: "medium",
+    output_format: "webp",
+    output_compression: 82,
     n: 1,
   });
   const b64 = data.data?.[0]?.b64_json;

@@ -36,7 +36,7 @@ supabase functions deploy suggest-ingredients
 supabase functions deploy generate-recipe-image
 ```
 
-Optional secrets: `OPENAI_TEXT_MODEL` (default `gpt-5-mini`) and `OPENAI_IMAGE_MODEL` (default `gpt-image-1`).
+Optional secrets: `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `OPENAI_IMAGE_MODEL` (default `gpt-image-1`) and `OPENAI_REASONING_EFFORT` (default `minimal`).
 
 ### 2. OAuth
 

@@ -8,6 +8,8 @@ final supabaseProvider = Provider<SupabaseClient>((ref) => Supabase.instance.cli
 
 final repositoryProvider = Provider<Repository>((ref) => Repository(ref.watch(supabaseProvider)));
 
+final enabledProvidersProvider = FutureProvider<Set<OAuthProvider>>((ref) => Repository.enabledProviders());
+
 final authStateProvider = StreamProvider<AuthState>(
   (ref) => ref.watch(supabaseProvider).auth.onAuthStateChange,
 );

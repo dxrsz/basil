@@ -9,48 +9,60 @@ const splashMinDuration = Duration(milliseconds: 1560);
 
 const _catAsset = 'assets/images/dancing_cat.gif';
 
+/// The GIF is stored at 1× (one image pixel per art pixel) and scaled up here
+/// by a whole number of *physical* pixels, so every art pixel renders the same
+/// size. Fractional nearest-neighbour scaling would reintroduce mixels.
+const _catCells = Size(39, 43);
+const _catTargetWidth = 176.0;
+
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: splashBackground,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image(
-              image: AssetImage(_catAsset),
-              width: 168,
-              // Keep the pixel art crisp when scaled.
-              filterQuality: FilterQuality.none,
-              gaplessPlayback: true,
-              semanticLabel: 'A dancing cat',
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Basil',
-              textDirection: TextDirection.ltr,
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1F2A1F),
-                decoration: TextDecoration.none,
+    final dpr = View.of(context).devicePixelRatio;
+    final physicalPerCell = (_catTargetWidth * dpr / _catCells.width).floorToDouble().clamp(1.0, double.infinity);
+    final logicalPerCell = physicalPerCell / dpr;
+
+    // Shown before MaterialApp exists, so supply the text direction ourselves.
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: ColoredBox(
+        color: splashBackground,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image(
+                image: const AssetImage(_catAsset),
+                width: _catCells.width * logicalPerCell,
+                height: _catCells.height * logicalPerCell,
+                filterQuality: FilterQuality.none,
+                gaplessPlayback: true,
+                semanticLabel: 'A dancing cat',
               ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Warming up the kitchen…',
-              textDirection: TextDirection.ltr,
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF5E6B5E),
-                decoration: TextDecoration.none,
-                fontWeight: FontWeight.w400,
+              const SizedBox(height: 20),
+              const Text(
+                'Basil',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1F2A1F),
+                  decoration: TextDecoration.none,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              const Text(
+                'Warming up the kitchen…',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF5E6B5E),
+                  decoration: TextDecoration.none,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

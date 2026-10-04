@@ -24,8 +24,7 @@ class _Bootstrap extends StatefulWidget {
 
 class _BootstrapState extends State<_Bootstrap> {
   late final Future<void> _ready = Future.wait([
-    if (Config.isConfigured)
-      Supabase.initialize(url: Config.supabaseUrl, publishableKey: Config.supabaseKey),
+    if (Config.isConfigured) Supabase.initialize(url: Config.supabaseUrl, publishableKey: Config.supabaseKey),
     Future<void>.delayed(splashMinDuration),
   ]);
 
@@ -40,9 +39,7 @@ class _BootstrapState extends State<_Bootstrap> {
         } else if (!Config.isConfigured || snapshot.hasError) {
           child = _ProblemApp(
             key: const ValueKey('problem'),
-            message: Config.isConfigured
-                ? 'Basil couldn\'t start.\n\n${snapshot.error}'
-                : 'Basil isn\'t configured.\n\nRun with:\nflutter run --dart-define-from-file=env.json\n\n(see env.example.json)',
+            message: Config.isConfigured ? 'Basil couldn\'t start.\n\n${snapshot.error}' : 'Basil isn\'t configured.\n\nRun with:\nflutter run --dart-define-from-file=env.json\n\n(see env.example.json)',
           );
         } else {
           child = const ProviderScope(key: ValueKey('app'), child: BasilApp());
@@ -64,6 +61,36 @@ class BasilApp extends ConsumerWidget {
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       routerConfig: ref.watch(routerProvider),
+      builder: (context, child) => _PhoneWidth(child: child!),
+    );
+  }
+}
+
+/// Basil is a phone app; on wide screens (web, tablets) keep it phone-shaped
+/// and centred instead of stretching lists across the window.
+class _PhoneWidth extends StatelessWidget {
+  const _PhoneWidth({required this.child});
+
+  static const maxWidth = 560.0;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    if (mq.size.width <= maxWidth) return child;
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Center(
+        child: ClipRect(
+          child: SizedBox(
+            width: maxWidth,
+            child: MediaQuery(
+              data: mq.copyWith(size: Size(maxWidth, mq.size.height)),
+              child: child,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

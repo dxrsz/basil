@@ -4,6 +4,18 @@ export const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+/** Preflight response that allows whatever headers the client library sends. */
+export function preflight(req: Request): Response {
+  return new Response("ok", {
+    headers: {
+      ...corsHeaders,
+      "Access-Control-Allow-Headers":
+        req.headers.get("Access-Control-Request-Headers") ?? corsHeaders["Access-Control-Allow-Headers"],
+      "Access-Control-Max-Age": "86400",
+    },
+  });
+}
+
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,

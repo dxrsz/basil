@@ -5,7 +5,7 @@
 // Returns immediately; generation continues in the background and the result
 // reaches clients through realtime updates on the `recipes` row.
 
-import { corsHeaders, error, json } from "../_shared/cors.ts";
+import { error, json, preflight } from "../_shared/cors.ts";
 import { adminClient, userClient } from "../_shared/clients.ts";
 import { generateImage } from "../_shared/openai.ts";
 
@@ -31,7 +31,7 @@ function promptFor(name: string, ingredients: string[]): string {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return preflight(req);
   if (req.method !== "POST") return error("POST only", 405);
 
   let body: { recipe_id?: string; force?: boolean };

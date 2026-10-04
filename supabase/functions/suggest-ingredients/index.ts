@@ -4,7 +4,7 @@
 // POST { meal: string, ingredients: string[], dismissed?: string[], mode?: "review" | "autofill" }
 // ->   { suggestions: [{ name, quantity, reason, severity: "missing" | "optional" }] }
 
-import { corsHeaders, error, json } from "../_shared/cors.ts";
+import { error, json, preflight } from "../_shared/cors.ts";
 import { userClient } from "../_shared/clients.ts";
 import { structured } from "../_shared/openai.ts";
 
@@ -66,7 +66,7 @@ Given a meal name (and maybe a few ingredients already chosen), list the remaini
 Style: each suggestion is ONE specific item (pick the most typical, e.g. "Jasmine rice", not "Brown rice or quinoa"). Names 1-3 words. Quantities at most 3 words ("2 cups", "1 bottle"), no parentheses or ranges. Reasons are a short phrase.`;
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return preflight(req);
   if (req.method !== "POST") return error("POST only", 405);
 
   // Require a signed-in user (verify_jwt also enforces this at the gateway).

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "basil-web",
+      "runtimeExecutable": "flutter",
+      "runtimeArgs": ["run", "-d", "web-server", "--web-port", "3000", "--web-hostname", "localhost", "--dart-define-from-file=env.json"],
+      "port": 3000
+    }
+  ]
+}

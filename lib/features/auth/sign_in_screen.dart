@@ -1,5 +1,4 @@
-import 'dart:io' show Platform;
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -34,7 +33,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     // Apple first on iOS, per Apple's guidelines.
-    final order = Platform.isIOS
+    final order = defaultTargetPlatform == TargetPlatform.iOS
         ? [OAuthProvider.apple, OAuthProvider.google]
         : [OAuthProvider.google, OAuthProvider.apple];
     // Only offer providers that are switched on in Supabase. If the check
@@ -54,15 +53,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(flex: 2),
-              Container(
-                width: 88,
-                height: 88,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(28),
+              // Align so the column's stretch doesn't widen the square tile.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 88,
+                  height: 88,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(28)),
+                  child: const Text('🌿', style: TextStyle(fontSize: 48)),
                 ),
-                child: const Text('🌿', style: TextStyle(fontSize: 48)),
               ),
               const SizedBox(height: 28),
               Text('Basil', style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800)),
@@ -79,14 +79,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               if (enabled.isLoading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 17),
-                  child: Center(child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                  child: Center(
+                    child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
                 ),
               for (final p in providers) ...[
-                _ProviderButton(
-                  provider: p,
-                  busy: _busy == p,
-                  onPressed: _busy == null ? () => _signIn(p) : null,
-                ),
+                _ProviderButton(provider: p, busy: _busy == p, onPressed: _busy == null ? () => _signIn(p) : null),
                 const SizedBox(height: 12),
               ],
               const SizedBox(height: 16),

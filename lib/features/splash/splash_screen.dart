@@ -37,6 +37,9 @@ class SplashScreen extends StatelessWidget {
                 image: const AssetImage(_catAsset),
                 width: _catCells.width * logicalPerCell,
                 height: _catCells.height * logicalPerCell,
+                // The box is an exact multiple of the GIF; the default fit
+                // (scaleDown) would never enlarge the 39×43 image to fill it.
+                fit: BoxFit.fill,
                 filterQuality: FilterQuality.none,
                 gaplessPlayback: true,
                 semanticLabel: 'A dancing cat',

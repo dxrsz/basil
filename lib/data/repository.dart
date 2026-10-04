@@ -1,6 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config.dart';
@@ -21,8 +22,9 @@ class Repository {
   Future<void> signIn(OAuthProvider provider) async {
     await _db.auth.signInWithOAuth(
       provider,
-      redirectTo: Config.authRedirect,
-      authScreenLaunchMode: LaunchMode.externalApplication,
+      // On web, come back to this page (same tab); on mobile, the app's URL scheme.
+      redirectTo: kIsWeb ? Uri.base.origin : Config.authRedirect,
+      authScreenLaunchMode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
     );
   }
 
@@ -31,20 +33,15 @@ class Repository {
   /// OAuth providers switched on in the Supabase dashboard, so the sign-in
   /// screen only offers ones that will work (e.g. Apple before it's set up).
   static Future<Set<OAuthProvider>> enabledProviders() async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
-    try {
-      final req = await client.getUrl(Uri.parse('${Config.supabaseUrl}/auth/v1/settings'));
-      req.headers.set('apikey', Config.supabaseKey);
-      final res = await req.close();
-      final body = jsonDecode(await res.transform(utf8.decoder).join()) as Map<String, dynamic>;
-      final external = (body['external'] as Map<String, dynamic>?) ?? const {};
-      return {
-        for (final p in const [OAuthProvider.apple, OAuthProvider.google])
-          if (external[p.name] == true) p,
-      };
-    } finally {
-      client.close();
-    }
+    final res = await http
+        .get(Uri.parse('${Config.supabaseUrl}/auth/v1/settings'), headers: {'apikey': Config.supabaseKey})
+        .timeout(const Duration(seconds: 5));
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final external = (body['external'] as Map<String, dynamic>?) ?? const {};
+    return {
+      for (final p in const [OAuthProvider.apple, OAuthProvider.google])
+        if (external[p.name] == true) p,
+    };
   }
 
   // ----------------------------------------------------------------- lists

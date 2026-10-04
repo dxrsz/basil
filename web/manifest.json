@@ -1,0 +1,35 @@
+{
+    "name": "Basil",
+    "short_name": "Basil",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#FBFAF6",
+    "theme_color": "#3F7D4E",
+    "description": "Shared grocery lists that know what's for dinner.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

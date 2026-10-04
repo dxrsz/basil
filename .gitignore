@@ -56,3 +56,6 @@ tool/splash/.venv/
 tool/splash/*.npy
 tool/splash/*.png
 tool/splash/dancing_cat*.gif
+
+# Apple Sign in keys
+*.p8

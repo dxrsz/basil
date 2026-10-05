@@ -5,6 +5,9 @@ Shared grocery lists that know what's for dinner. Flutter (iOS + Android) on Sup
 ## What it does
 
 - **Lists, shared live.** Have as many lists as you like and invite people with a 6-character code. Everyone sees adds, check-offs and removals in real time, and checked items show who got them.
+- **Invite links.** Sharing sends `https://lamarsgroceries.app/join/CODE`; it opens the app if installed (App Links / Universal Links) or the web app otherwise, signs you in if needed, and drops you into the list.
+- **Who's shopping now.** Small avatars show who else has the list open, and "Sam is at the store 🛒" when someone's shopping.
+- **Push notifications.** "Sam is at the store — anything to add?", "Alex added 3 things to Weekly groceries" (bundled, never one per item) and "Kit joined your list", with per-kind switches and per-list mutes.
 - **Smart list entry.** Type `2 lb chicken thighs` and it's stored as *Chicken thighs · 2 lb*, filed under the right aisle (Produce, Meat, Pantry…).
 - **Meals.** A meal is just a name ("Taco bowls") and the items you associate with it. One tap puts its ingredients on the list, and items are tagged with the meal(s) they came from.
 - **"Got this already?"** Before a meal's ingredients go on the list, a quick review pre-marks pantry staples (oil, salt, spices, rice…) and anything the household said it has as *Got it*. Answers are remembered per list for 30 days (or forever, if pinned); see and edit them under *Pantry staples* in the list menu. Every meal-adding screen goes through `showAddMealToListFlow` (`lib/features/pantry/add_meal_flow.dart`).
@@ -103,6 +106,83 @@ Vercel's image has none) and `tool/vercel/build.sh` (`flutter build web`).
 Pushes to `main` deploy to production; pull requests get preview URLs.
 Builds take ~2 minutes (verified in an Amazon Linux 2023 container, the
 image Vercel builds on).
+
+## Sharing: invite links, presence, push
+
+### Invite links
+
+`https://lamarsgroceries.app/join/<CODE>` (and `lamarsgroceries://join/<CODE>` as a
+fallback). On the web, `/join/:code` is a normal route; signed-out visitors sign in
+first and then continue. In the apps, `app_links` routes the link (cold start or
+while running); Flutter's own deep linking is off (`flutter_deeplinking_enabled` /
+`FlutterDeepLinkingEnabled`) so it doesn't fight `go_router` or the OAuth callback.
+
+`web/.well-known/` is deployed with the web app (`vercel.json` keeps it out of the
+SPA rewrite and serves it as JSON):
+
+- **Android** (`assetlinks.json`): lists the SHA-256 of the local *debug* keystore
+  (release builds are currently signed with it too). When a real release key (or
+  Play App Signing) exists, add its fingerprint to `sha256_cert_fingerprints`
+  (Play Console → App integrity, or `keytool -list -v -keystore <release.jks>`).
+  Check with `adb shell pm verify-app-links --re-verify com.lamarsgroceries.app`
+  then `adb shell pm get-app-links com.lamarsgroceries.app`.
+- **iOS** (`apple-app-site-association`): replace `TEAMID_PLACEHOLDER` (twice) with
+  the Apple Team ID once the developer account is active. The Runner target's
+  `Runner/Runner.entitlements` has `applinks:lamarsgroceries.app` and
+  `aps-environment`; device builds need a provisioning profile with Associated
+  Domains and Push Notifications (automatic signing adds them once a team is set).
+  Simulator builds don't need either.
+
+### Presence
+
+Each open list joins the private Realtime channel `presence:list:<list id>`.
+Realtime Authorization policies on `realtime.messages` only let list members
+receive or track presence there (`20261005140000_list_presence_auth.sql`).
+Store mode marks you as shopping with
+`ref.read(shoppingNowProvider.notifier).setShopping(listId, true)` (and `false`
+on leaving); that updates presence and pings the others (at most once per
+person per list per 30 minutes).
+
+### Push notifications (Firebase Cloud Messaging)
+
+How it works: database triggers queue events (`notification_outbox`, and
+`item_add_batches`, which folds a person's adds into one notification sent 60 s
+after their last add, or 5 min after the first). The `notify` edge function
+claims due events and sends them through the FCM HTTP v1 API. It is called by
+`pg_net` (immediately for joins/shopping, and from a 30 s `pg_cron` job when a
+batch is due) with a random shared secret kept in `private.notify_config`, so it
+runs with `verify_jwt = false`. Events are only queued if another member has a
+registered device. Without `FCM_SERVICE_ACCOUNT` the function logs and returns
+200 without sending.
+
+The app builds and runs without any Firebase files (push is simply off; the
+Google Services Gradle plugin is only applied when `google-services.json`
+exists). To turn push on:
+
+1. [Firebase console](https://console.firebase.google.com) → **Add project** (Analytics optional).
+2. **Add app → Android**, package `com.lamarsgroceries.app`. Download
+   `google-services.json` to `android/app/google-services.json`.
+3. **Add app → iOS**, bundle ID `com.lamarsgroceries.app`. Download
+   `GoogleService-Info.plist`, then in Xcode drag it into `Runner/` (target
+   *Runner* checked, so it's in *Copy Bundle Resources*).
+4. Once the Apple account is active: Apple Developer → Keys → **+** → *Apple Push
+   Notifications service (APNs)*, download the `.p8`; Firebase → Project
+   settings → Cloud Messaging → *Apple app configuration* → upload it with the
+   Key ID and Team ID. Set the team in Xcode (Runner → Signing & Capabilities).
+5. Project settings → **Service accounts → Generate new private key**, then:
+   ```bash
+   supabase secrets set FCM_SERVICE_ACCOUNT="$(cat path/to/service-account.json)"
+   ```
+   (Delete the downloaded key afterwards; it can send to all your users.)
+6. Decide whether to commit the two config files (they're not secret, but are
+   project-specific); add them to `.gitignore` otherwise.
+
+The permission prompt appears after you join or share a list (or turn
+notifications on in *Notifications* settings), never at first launch.
+
+Deploying the backend: `supabase db push` and `supabase functions deploy notify`.
+For a project other than the dev one, point the trigger at it:
+`update private.notify_config set function_url = 'https://<ref>.supabase.co/functions/v1/notify';`
 
 ## Rate limits
 

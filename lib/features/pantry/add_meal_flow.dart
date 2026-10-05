@@ -29,11 +29,11 @@ Future<int?> showAddMealToListFlow(BuildContext context, WidgetRef ref, Recipe r
   final repo = ref.read(repositoryProvider);
   final listId = recipe.listId;
   // Pantry memory is a nicety: without it, Lamar just falls back to staples.
-  final pantryF = ref
-      .read(pantryProvider(listId).future)
-      .timeout(const Duration(seconds: 8))
-      .catchError((Object _) => const <PantryStaple>[]);
-  final items = await ref.read(itemsProvider(listId).future).timeout(const Duration(seconds: 8));
+  final pantryF = readFirst(
+    ref,
+    pantryProvider(listId),
+  ).timeout(const Duration(seconds: 8)).catchError((Object _) => const <PantryStaple>[]);
+  final items = await readFirst(ref, itemsProvider(listId)).timeout(const Duration(seconds: 8));
   final pantry = await pantryF;
 
   final rows = buildMealReview(recipe: recipe, items: items, pantry: pantry, now: DateTime.now());

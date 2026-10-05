@@ -70,7 +70,7 @@ class MealsTabHeader extends ConsumerWidget {
               child: OutlinedButton.icon(
                 onPressed: () => context.push('/lists/$listId/tonight'),
                 icon: const Icon(Icons.kitchen_outlined, size: 18),
-                label: const Text('Tonight?', overflow: TextOverflow.ellipsis),
+                label: const Text('From my fridge', overflow: TextOverflow.ellipsis),
               ),
             ),
           ],

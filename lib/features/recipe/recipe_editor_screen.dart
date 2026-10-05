@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/planner_repository.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../models/models.dart';
@@ -12,6 +13,7 @@ import '../../util/categories.dart';
 import '../../widgets/empty_state.dart';
 import '../import/import_flow.dart';
 import '../pantry/add_meal_flow.dart';
+import '../planner/planner_models.dart';
 
 /// Create or edit a meal: a name plus the ingredients you associate with it.
 ///
@@ -43,6 +45,12 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   int _reviewSeq = 0;
   bool _reviewing = false;
   bool _autofilling = false;
+
+  /// "Surprise me": Lamar's current pick, and every pick so far (so "Another
+  /// idea" doesn't repeat itself).
+  MealIdea? _pick;
+  bool _picking = false;
+  final _picked = <String>[];
   bool _saving = false;
   bool _addToList = true;
   bool _loaded = false;
@@ -255,6 +263,33 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
     _scheduleReview();
   }
 
+  // ------------------------------------------------------------ surprise me
+
+  Future<void> _surpriseMe() async {
+    setState(() => _picking = true);
+    try {
+      final idea = await ref.read(plannerRepositoryProvider).idea(widget.listId, avoid: _picked);
+      if (!mounted) return;
+      _picked.add(idea.name);
+      // The pick already has a full ingredient list; don't ask for a review of it.
+      _lastNameReviewed = idea.name;
+      _debounce?.cancel();
+      setState(() {
+        _pick = idea;
+        _name.text = idea.name;
+        _ingredients
+          ..clear()
+          ..addAll(idea.toRecipeIngredients());
+        _suggestions = [];
+        _aiError = null;
+      });
+    } catch (e) {
+      if (mounted) showError(context, friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _picking = false);
+    }
+  }
+
   // ----------------------------------------------------------------- save
 
   Future<void> _save() async {
@@ -361,10 +396,13 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'e.g. Taco bowls, Salmon power bowl, Sunday pancakes',
-            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-          ),
+          if (_pick != null && _pick!.name == _meal)
+            _LamarsPick(pitch: _pick!.pitch, busy: _picking, onAnother: _surpriseMe)
+          else
+            Text(
+              'e.g. Taco bowls, Salmon power bowl, Sunday pancakes',
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
           const SizedBox(height: 24),
 
           Row(
@@ -382,7 +420,10 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           const SizedBox(height: 8),
 
           if (_ingredients.isEmpty) ...[
-            _AutofillCard(meal: _meal, busy: _autofilling, onPressed: _meal.isEmpty || _autofilling ? null : _autofill),
+            if (_meal.isEmpty)
+              _SurpriseCard(busy: _picking, onPressed: _picking ? null : _surpriseMe)
+            else
+              _AutofillCard(meal: _meal, busy: _autofilling, onPressed: _autofilling ? null : _autofill),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -498,6 +539,95 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Shown while the meal has no name yet: Lamar picks something for you.
+class _SurpriseCard extends StatelessWidget {
+  const _SurpriseCard({required this.busy, required this.onPressed});
+
+  final bool busy;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Card(
+      color: scheme.primaryContainer.withValues(alpha: 0.6),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.casino_outlined, color: scheme.secondary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Not sure what to make? Lamar can pick',
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 36),
+              child: Text(
+                'Something that suits your kitchen profile. Or type a name above and he\'ll fill in the ingredients.',
+                style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 36),
+              child: FilledButton.tonalIcon(
+                onPressed: onPressed,
+                icon: busy
+                    ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.auto_awesome, size: 18),
+                label: Text(busy ? 'Lamar is thinking…' : 'Surprise me'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Under the name once Lamar picked the meal: his pitch, and another try.
+class _LamarsPick extends StatelessWidget {
+  const _LamarsPick({required this.pitch, required this.busy, required this.onAnother});
+
+  final String pitch;
+  final bool busy;
+  final VoidCallback onAnother;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Row(
+      children: [
+        Icon(Icons.casino_outlined, size: 16, color: scheme.secondary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            pitch.isEmpty ? 'Lamar\'s pick' : 'Lamar\'s pick: $pitch',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+        TextButton(
+          onPressed: busy ? null : onAnother,
+          child: busy
+              ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Another idea'),
+        ),
+      ],
     );
   }
 }

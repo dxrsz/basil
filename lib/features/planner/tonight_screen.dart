@@ -112,7 +112,7 @@ class _TonightScreenState extends ConsumerState<TonightScreen> {
     final offered = [..._typed, ...bought.where((b) => !_typed.any((t) => t.toLowerCase() == b.toLowerCase()))];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('What can I make tonight?')),
+      appBar: AppBar(title: const Text('Cook from my fridge')),
       body: _loading
           ? const LamarThinking(
               lines: [

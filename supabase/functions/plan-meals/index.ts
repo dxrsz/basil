@@ -12,6 +12,9 @@
 //      profile, e.g. { kind: "ingredient", value: "tofu" }, so the app can undo it)
 // POST { list_id, mode: "tonight", have: string[] }
 //   -> { summary, meals: [Meal] }            2-3 ideas that use up what they have
+// POST { list_id, mode: "idea", avoid?: string[] }
+//   -> { summary, meals: [Meal] }            one dinner idea for "New meal → Surprise me",
+//                                             avoiding meals already saved on the list
 //
 // Meal = { name, pitch, minutes, effort, appliance, ingredients: [{ name, quantity, perishable }], reuse_note, day,
 //          nope_guesses: [{ label, kind, value }] }   Lamar's guesses at why someone might say "Nope!" to it
@@ -351,8 +354,8 @@ Deno.serve(async (req) => {
   const listId = str(body.list_id, 64);
   const mode = body.mode;
   if (!listId) return error("list_id is required");
-  if (mode !== "week" && mode !== "swap" && mode !== "nudge" && mode !== "nope" && mode !== "tonight") {
-    return error("mode must be week, swap, nudge, nope or tonight");
+  if (mode !== "week" && mode !== "swap" && mode !== "nudge" && mode !== "nope" && mode !== "tonight" && mode !== "idea") {
+    return error("mode must be week, swap, nudge, nope, tonight or idea");
   }
 
   const week = (Array.isArray(body.week) ? body.week : []).slice(0, 7).map(cleanMeal).filter((m): m is Meal => !!m);
@@ -444,6 +447,21 @@ Deno.serve(async (req) => {
       days = target.day ? [target.day] : [];
       break;
     }
+    case "idea": {
+      want = 1;
+      // Meals already saved on the list (RLS: the caller is a member).
+      const { data: saved } = await client.from("recipes").select("name").eq("list_id", listId).limit(60);
+      const already = [...(saved ?? []).map((r: { name: string }) => r.name), ...avoid];
+      prompt = [
+        profile,
+        "",
+        "They're adding a meal and want you to pick one: suggest ONE dinner they'd enjoy cooking this week.",
+        "Make it a crowd-pleaser that fits their profile, with a short, appetising name.",
+        already.length ? `They already have these, so pick something clearly different: ${already.join(", ")}.` : "",
+        "Return exactly 1 meal.",
+      ].filter(Boolean).join("\n");
+      break;
+    }
     case "tonight": {
       want = 3;
       prompt = [
@@ -526,6 +544,8 @@ Deno.serve(async (req) => {
       }
       case "tonight":
         return json({ summary: plan.summary, meals: meals.map((m) => ({ ...m, reuse_note: usesUp(m, have) })) });
+      case "idea":
+        return json({ summary: plan.summary, meals: [meals[0]] });
     }
   } catch (e) {
     console.error(e);

@@ -56,7 +56,7 @@ class _TidySheetState extends ConsumerState<TidySheet> {
   Future<void> _load() async {
     List<Item> items;
     try {
-      items = await ref.read(itemsProvider(widget.listId).future);
+      items = await readFirst(ref, itemsProvider(widget.listId));
     } catch (e) {
       if (!mounted) return;
       setState(() {

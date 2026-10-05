@@ -83,3 +83,18 @@ final recipeProvider = Provider.family<Recipe?, ({String listId, String recipeId
   }
   return null;
 });
+
+/// The current (or first) value of a stream provider, from a callback.
+///
+/// Don't use `ref.read(provider.future)` for this: Riverpod 3 pauses a stream
+/// provider that nothing is listening to, so its future never completes (the
+/// "Got this already?" step sat on an 8 s timeout on every meal save). This
+/// listens for as long as it waits.
+Future<T> readFirst<T>(WidgetRef ref, StreamProvider<T> provider) async {
+  final sub = ref.listenManual(provider, (_, _) {});
+  try {
+    return await ref.read(provider.future);
+  } finally {
+    sub.close();
+  }
+}

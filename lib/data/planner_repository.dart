@@ -170,6 +170,11 @@ class PlannerRepository {
     );
   }
 
+  /// One dinner idea for "New meal → Surprise me", avoiding meals already on
+  /// the list and the names in [avoid] (earlier surprises).
+  Future<MealIdea> idea(String listId, {List<String> avoid = const []}) async =>
+      (await _plan({'list_id': listId, 'mode': 'idea', 'avoid': avoid})).meals.first;
+
   /// 2-3 dinners that use up what they [have].
   Future<MealPlan> tonight(String listId, List<String> have) =>
       _plan({'list_id': listId, 'mode': 'tonight', 'have': have});

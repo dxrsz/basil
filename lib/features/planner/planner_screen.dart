@@ -444,7 +444,7 @@ class _ReadyToPlan extends ConsumerWidget {
         OutlinedButton.icon(
           onPressed: () => context.push('/lists/$listId/tonight'),
           icon: const Icon(Icons.kitchen_outlined),
-          label: const Text('What can I make tonight?'),
+          label: const Text('Cook from my fridge'),
         ),
         if (again.isNotEmpty) ...[
           const SizedBox(height: 32),

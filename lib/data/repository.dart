@@ -423,6 +423,15 @@ class Repository {
     await _db.functions.invoke('generate-recipe-image', body: {'recipe_id': recipeId, 'force': force});
   }
 
+  /// YouTube videos for a meal, found (and cached) by the find-videos function.
+  /// Throws a [FunctionException] with status 503 when YouTube isn't set up.
+  Future<List<RecipeVideo>> findVideos(String recipeId, {bool refresh = false}) async {
+    _requireOnline();
+    final res = await _db.functions.invoke('find-videos', body: {'recipe_id': recipeId, 'refresh': refresh});
+    final data = res.data as Map<String, dynamic>;
+    return [for (final v in (data['videos'] as List? ?? const [])) RecipeVideo.fromJson(v as Map<String, dynamic>)];
+  }
+
   Future<List<Suggestion>> suggestIngredients({
     required String meal,
     required List<String> ingredients,

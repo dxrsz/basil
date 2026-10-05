@@ -439,3 +439,6 @@ verify_jwt = true
 # Called by the database (pg_net), not by users: it checks a shared secret
 # (private.notify_config) instead of a JWT. See the function header.
 verify_jwt = false
+
+[functions.find-videos]
+verify_jwt = true

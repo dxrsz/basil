@@ -12,6 +12,7 @@ import '../pantry/add_meal_flow.dart';
 import '../pantry/pantry_data.dart';
 import '../pantry/pantry_logic.dart';
 import '../planner/meal_memory.dart';
+import 'meal_videos.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   const RecipeDetailScreen({super.key, required this.listId, required this.recipeId});
@@ -193,6 +194,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     ),
                   ),
                 for (final ing in recipe.ingredients) _IngredientRow(ingredient: ing, state: stateOf(ing)),
+                MealVideos(recipe: recipe),
               ],
             ),
           ),

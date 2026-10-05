@@ -18,7 +18,7 @@ export function adminClient(): SupabaseClient {
 }
 
 /** AI features with rate limits; each must have a row in public.ai_limits. */
-export type QuotaKind = "suggest" | "image" | "plan" | "tidy" | "import";
+export type QuotaKind = "suggest" | "image" | "plan" | "tidy" | "import" | "videos";
 
 /**
  * Records one OpenAI-backed call for this user, or returns a message

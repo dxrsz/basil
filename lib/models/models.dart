@@ -251,3 +251,33 @@ class TidyProposal {
     'quantity': quantity,
   };
 }
+
+/// A YouTube video for a meal ("Watch how to make it").
+class RecipeVideo {
+  const RecipeVideo({
+    required this.id,
+    required this.title,
+    required this.channel,
+    required this.thumbnail,
+    required this.seconds,
+    required this.views,
+  });
+
+  final String id;
+  final String title;
+  final String channel;
+  final String thumbnail;
+  final int seconds;
+  final int views;
+
+  Uri get url => Uri.https('www.youtube.com', '/watch', {'v': id});
+
+  factory RecipeVideo.fromJson(Map<String, dynamic> j) => RecipeVideo(
+    id: j['id'] as String,
+    title: (j['title'] as String?) ?? '',
+    channel: (j['channel'] as String?) ?? '',
+    thumbnail: (j['thumbnail'] as String?) ?? 'https://i.ytimg.com/vi/${j['id']}/hqdefault.jpg',
+    seconds: (j['seconds'] as num?)?.toInt() ?? 0,
+    views: (j['views'] as num?)?.toInt() ?? 0,
+  );
+}

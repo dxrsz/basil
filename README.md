@@ -184,6 +184,18 @@ Deploying the backend: `supabase db push` and `supabase functions deploy notify`
 For a project other than the dev one, point the trigger at it:
 `update private.notify_config set function_url = 'https://<ref>.supabase.co/functions/v1/notify';`
 
+## YouTube videos
+
+Each meal's page shows "Watch how to make it": YouTube videos found by the
+`find-videos` function (YouTube Data API v3) and cached per meal in
+`recipe_videos` (a rename looks again). Until `YOUTUBE_API_KEY` is set the
+section is hidden. To set it up: Google Cloud console → APIs & Services →
+Library → enable **YouTube Data API v3** → Credentials → Create credentials →
+API key → restrict it to the YouTube Data API v3, then
+`supabase secrets set YOUTUBE_API_KEY=...`. A search costs 100 of the free
+10,000 daily quota units, so lookups are capped at 90/day (`ai_limits` kind
+`videos`).
+
 ## Rate limits
 
 Every OpenAI-backed edge function calls `consumeQuota(user, kind)` before

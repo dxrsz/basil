@@ -24,6 +24,10 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
 
   /// Optimistic check state, shown until the realtime stream catches up.
   final _pending = <String, bool>{};
+
+  /// Items deleted locally but not yet confirmed gone by the stream. Hidden
+  /// at once so the list (and Dismissible, which requires it) updates instantly.
+  final _hidden = <String>{};
   bool _showChecked = true;
 
   @override
@@ -61,6 +65,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
 
   Future<void> _delete(Item item) async {
     final messenger = ScaffoldMessenger.of(context);
+    setState(() => _hidden.add(item.id));
     try {
       await _repo.deleteItem(item.id);
       messenger
@@ -68,11 +73,19 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
         ..showSnackBar(
           SnackBar(
             content: Text('Removed ${item.name}'),
-            action: SnackBarAction(label: 'Undo', onPressed: () => _repo.restoreItem(item)),
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () {
+                if (mounted) setState(() => _hidden.remove(item.id));
+                _repo.restoreItem(item);
+              },
+            ),
           ),
         );
     } catch (e) {
-      if (mounted) showError(context, friendlyError(e));
+      if (!mounted) return;
+      setState(() => _hidden.remove(item.id));
+      showError(context, friendlyError(e));
     }
   }
 
@@ -89,12 +102,16 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
     }
   }
 
-  Future<void> _clearChecked() async {
+  Future<void> _clearChecked(List<Item> done) async {
+    final ids = done.map((i) => i.id).toSet();
+    setState(() => _hidden.addAll(ids));
     try {
       final n = await _repo.clearChecked(widget.listId);
       if (mounted && n > 0) showError(context, 'Cleared $n item${n == 1 ? '' : 's'}');
     } catch (e) {
-      if (mounted) showError(context, friendlyError(e));
+      if (!mounted) return;
+      setState(() => _hidden.removeAll(ids));
+      showError(context, friendlyError(e));
     }
   }
 
@@ -117,7 +134,11 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
       // Drop optimistic overrides the server has confirmed.
       final byId = {for (final i in raw) i.id: i};
       _pending.removeWhere((id, v) => byId[id] == null || byId[id]!.checked == v);
-      final items = [for (final i in raw) _pending.containsKey(i.id) ? i.copyWith(checked: _pending[i.id]) : i];
+      _hidden.removeWhere((id) => !byId.containsKey(id)); // the server confirmed the delete
+      final items = [
+        for (final i in raw)
+          if (!_hidden.contains(i.id)) _pending.containsKey(i.id) ? i.copyWith(checked: _pending[i.id]) : i,
+      ];
 
       final todo = items.where((i) => !i.checked).toList();
       final done = items.where((i) => i.checked).toList();
@@ -181,7 +202,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                             ),
                           ),
                           const Spacer(),
-                          TextButton(onPressed: _clearChecked, child: const Text('Clear')),
+                          TextButton(onPressed: () => _clearChecked(done), child: const Text('Clear')),
                         ],
                       ),
                     ),

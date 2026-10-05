@@ -803,7 +803,7 @@ packages:
     source: hosted
     version: "1.4.1"
   supabase:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: supabase
       sha256: "3662449640972335e50d075a1fceb000b9217e403564305d129a4d287ff4b4c9"

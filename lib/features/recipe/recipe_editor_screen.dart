@@ -171,12 +171,16 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
               content: Text('Added ${core.length} ingredients'),
               action: SnackBarAction(
                 label: 'Undo',
-                onPressed: () => setState(() {
-                  _ingredients
-                    ..clear()
-                    ..addAll(before);
-                  _suggestions = [];
-                }),
+                onPressed: () {
+                  // The snackbar can outlive this screen (e.g. after saving).
+                  if (!mounted) return;
+                  setState(() {
+                    _ingredients
+                      ..clear()
+                      ..addAll(before);
+                    _suggestions = [];
+                  });
+                },
               ),
             ),
           );
@@ -245,6 +249,8 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
     // Keep anything typed but not yet submitted.
     if (_ingredientInput.text.trim().isNotEmpty) _addIngredient();
 
+    // Don't leave this screen's "Undo" snackbar behind on the next one.
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() => _saving = true);
     try {
       final id = await _repo.saveRecipe(

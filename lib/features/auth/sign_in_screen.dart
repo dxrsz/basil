@@ -47,43 +47,56 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     };
 
     return Scaffold(
+      // Scrolls when the content doesn't fit (small phones, large text, the
+      // two-line title), while the spacers still spread it out on tall screens.
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(flex: 2),
-              // Align so the column's stretch doesn't widen him.
-              const Align(alignment: Alignment.centerLeft, child: Lamar(width: 104)),
-              const SizedBox(height: 28),
-              Text(
-                'Lamar\'s Groceries',
-                style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.8),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Shared grocery lists that know what\'s for dinner.',
-                style: theme.textTheme.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 32),
-              const _Feature(icon: Icons.group_outlined, text: 'Shop together, updated live'),
-              const _Feature(icon: Icons.restaurant_menu, text: 'Turn meals into lists in one tap'),
-              const _Feature(icon: Icons.auto_awesome_outlined, text: 'Catch the ingredient you forgot'),
-              const Spacer(flex: 3),
-              if (enabled.isLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 17),
-                  child: Center(
-                    child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                  ),
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Spacer(flex: 2),
+                    // Align so the column's stretch doesn't widen him.
+                    const Align(alignment: Alignment.centerLeft, child: Lamar(width: 104)),
+                    const SizedBox(height: 28),
+                    Text(
+                      'Lamar\'s Groceries',
+                      style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.8),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Shared grocery lists that know what\'s for dinner.',
+                      style: theme.textTheme.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 32),
+                    const _Feature(icon: Icons.group_outlined, text: 'Shop together, updated live'),
+                    const _Feature(icon: Icons.restaurant_menu, text: 'Turn meals into lists in one tap'),
+                    const _Feature(icon: Icons.auto_awesome_outlined, text: 'Catch the ingredient you forgot'),
+                    const Spacer(flex: 3),
+                    if (enabled.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 17),
+                        child: Center(
+                          child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                      ),
+                    for (final p in providers) ...[
+                      _ProviderButton(
+                        provider: p,
+                        busy: _busy == p,
+                        onPressed: _busy == null ? () => _signIn(p) : null,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    const SizedBox(height: 16),
+                  ],
                 ),
-              for (final p in providers) ...[
-                _ProviderButton(provider: p, busy: _busy == p, onPressed: _busy == null ? () => _signIn(p) : null),
-                const SizedBox(height: 12),
-              ],
-              const SizedBox(height: 16),
-            ],
+              ),
+            ),
           ),
         ),
       ),
@@ -106,7 +119,7 @@ class _Feature extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: scheme.secondary),
           const SizedBox(width: 12),
-          Text(text, style: Theme.of(context).textTheme.bodyLarge),
+          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyLarge)),
         ],
       ),
     );
@@ -128,12 +141,19 @@ class _ProviderButton extends StatelessWidget {
         ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
         : Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               isApple
                   ? const Icon(Icons.apple, size: 22)
                   : const Text('G', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(width: 10),
-              Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
             ],
           );
 

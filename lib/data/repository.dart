@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config.dart';
 import '../models/models.dart';
 import '../util/categories.dart';
+import 'live_query.dart';
 
 /// All reads/writes against Supabase. Widgets go through providers.dart;
 /// mutations come straight here.
@@ -49,21 +50,24 @@ class Repository {
   Stream<List<String>> watchMyListIds() {
     final uid = userId;
     if (uid == null) return Stream.value(const []);
-    return _db
-        .from('list_members')
-        .stream(primaryKey: ['list_id', 'user_id'])
-        .eq('user_id', uid)
-        .map((rows) => rows.map((r) => r['list_id'] as String).toList()..sort());
+    return liveRows(
+      _db,
+      table: 'list_members',
+      column: 'user_id',
+      value: uid,
+      primaryKey: ['list_id', 'user_id'],
+    ).map((rows) => rows.map((r) => r['list_id'] as String).toList()..sort());
   }
 
   Stream<List<ShoppingList>> watchLists(List<String> ids) {
     if (ids.isEmpty) return Stream.value(const []);
-    return _db
-        .from('lists')
-        .stream(primaryKey: ['id'])
-        .inFilter('id', ids)
-        .order('created_at')
-        .map((rows) => rows.map(ShoppingList.fromJson).toList());
+    return liveRows(
+      _db,
+      table: 'lists',
+      column: 'id',
+      value: ids,
+      orderBy: 'created_at',
+    ).map((rows) => rows.map(ShoppingList.fromJson).toList());
   }
 
   Future<String> createList(String name, String emoji) async {
@@ -92,7 +96,7 @@ class Repository {
   }
 
   Stream<List<Member>> watchMembers(String listId) {
-    return _db.from('list_members').stream(primaryKey: ['list_id', 'user_id']).eq('list_id', listId)
+    return liveRows(_db, table: 'list_members', column: 'list_id', value: listId, primaryKey: ['list_id', 'user_id'])
     // The realtime payload has no profile data, so re-read with the join.
     .asyncMap((_) async {
       final rows = await _db
@@ -107,12 +111,13 @@ class Repository {
   // ----------------------------------------------------------------- items
 
   Stream<List<Item>> watchItems(String listId) {
-    return _db
-        .from('items')
-        .stream(primaryKey: ['id'])
-        .eq('list_id', listId)
-        .order('created_at')
-        .map((rows) => rows.map(Item.fromJson).toList());
+    return liveRows(
+      _db,
+      table: 'items',
+      column: 'list_id',
+      value: listId,
+      orderBy: 'created_at',
+    ).map((rows) => rows.map(Item.fromJson).toList());
   }
 
   Future<void> addItem(String listId, String input) {
@@ -156,21 +161,24 @@ class Repository {
   // --------------------------------------------------------------- recipes
 
   Stream<List<Recipe>> watchRecipes(String listId) {
-    return _db
-        .from('recipes')
-        .stream(primaryKey: ['id'])
-        .eq('list_id', listId)
-        .order('created_at', ascending: false)
-        .map((rows) => rows.map(Recipe.fromJson).toList());
+    return liveRows(
+      _db,
+      table: 'recipes',
+      column: 'list_id',
+      value: listId,
+      orderBy: 'created_at',
+      ascending: false,
+    ).map((rows) => rows.map(Recipe.fromJson).toList());
   }
 
   Stream<List<Ingredient>> watchIngredients(String listId) {
-    return _db
-        .from('recipe_ingredients')
-        .stream(primaryKey: ['id'])
-        .eq('list_id', listId)
-        .order('position')
-        .map((rows) => rows.map(Ingredient.fromJson).toList());
+    return liveRows(
+      _db,
+      table: 'recipe_ingredients',
+      column: 'list_id',
+      value: listId,
+      orderBy: 'position',
+    ).map((rows) => rows.map(Ingredient.fromJson).toList());
   }
 
   Future<String> saveRecipe({

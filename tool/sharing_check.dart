@@ -16,7 +16,7 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:lamars_groceries/features/join/join_link.dart';
-import 'package:lamars_groceries/features/presence/presence.dart';
+import 'package:lamars_groceries/features/presence/presence_state.dart';
 import 'package:supabase/supabase.dart';
 
 late final String url;
@@ -211,7 +211,11 @@ Future<void> main() async {
           ) &&
           await throwsSomething(() => b.rpc('kick_notify')),
     );
-    report('users can\'t read the queue', (await b.from('item_add_batches').select()).isEmpty);
+    report(
+      'users can\'t read the queue',
+      await throwsSomething(() => b.from('item_add_batches').select()) &&
+          await throwsSomething(() => b.from('notification_outbox').select()),
+    );
 
     // --------------------------------------------------------------- queue
     stdout.writeln('Notification queue');

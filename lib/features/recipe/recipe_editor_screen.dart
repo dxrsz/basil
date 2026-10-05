@@ -11,6 +11,7 @@ import '../../models/models.dart';
 import '../../util/categories.dart';
 import '../../widgets/empty_state.dart';
 import '../import/import_flow.dart';
+import '../pantry/add_meal_flow.dart';
 
 /// Create or edit a meal: a name plus the ingredients you associate with it.
 ///
@@ -277,8 +278,21 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
             Ingredient(name: _ingredients[i].name, quantity: _ingredients[i].quantity, position: i),
         ],
       );
-      if (_addToList) {
-        await _repo.addRecipeToList(id);
+      if (_addToList && mounted) {
+        // "Got this already?" review; cancelling it just leaves the meal off the list.
+        final meal = Recipe(
+          id: id,
+          listId: widget.listId,
+          name: _meal,
+          imageUrl: null,
+          imageStatus: ImageStatus.idle,
+          createdAt: DateTime.now(),
+          ingredients: [
+            for (var i = 0; i < _ingredients.length; i++)
+              Ingredient(name: _ingredients[i].name, quantity: _ingredients[i].quantity, position: i, recipeId: id),
+          ],
+        );
+        await showAddMealToListFlow(context, ref, meal);
       } else if (!_isNew) {
         await _repo.removeRecipeFromList(id);
       }

@@ -52,7 +52,11 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
     _input.clear();
     _focus.requestFocus();
     try {
-      await _repo.addItem(widget.listId, text);
+      final added = await _repo.addItem(widget.listId, text);
+      if (mounted && added.merged) {
+        final now = added.quantity == null ? '' : ', so Lamar made it ${added.quantity}';
+        showError(context, '${added.name} was already on the list$now');
+      }
     } catch (e) {
       if (mounted) showError(context, friendlyError(e));
     }
@@ -128,6 +132,12 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
     final recipes = ref.watch(recipesProvider(widget.listId)).value ?? const <Recipe>[];
     final members = ref.watch(membersProvider(widget.listId)).value ?? const <Member>[];
     final recipeNames = {for (final r in recipes) r.id: r.name};
+    // Merged items can come from several meals; tag them with all of them.
+    String? mealTag(Item i) {
+      final names = [for (final id in i.recipeIds) ?recipeNames[id]];
+      return names.isEmpty ? recipeNames[i.recipeId] : names.join(' + ');
+    }
+
     final membersById = {for (final m in members) m.userId: m};
     final shared = members.length > 1;
 
@@ -181,7 +191,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                         _ItemTile(
                           key: ValueKey(item.id),
                           item: item,
-                          recipeName: recipeNames[item.recipeId],
+                          recipeName: mealTag(item),
                           onToggle: (v) => _toggle(item, v),
                           onDelete: () => _delete(item),
                           onTap: () => _edit(item),
@@ -221,7 +231,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                           _ItemTile(
                             key: ValueKey(item.id),
                             item: item,
-                            recipeName: recipeNames[item.recipeId],
+                            recipeName: mealTag(item),
                             checkedBy: shared ? membersById[item.checkedBy] : null,
                             onToggle: (v) => _toggle(item, v),
                             onDelete: () => _delete(item),

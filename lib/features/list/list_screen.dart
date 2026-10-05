@@ -8,6 +8,8 @@ import '../../widgets/avatars.dart';
 import '../../widgets/empty_state.dart';
 import '../import/import_flow.dart';
 import '../lists/list_form_sheet.dart';
+import '../pantry/pantry_sheet.dart';
+import '../tidy/tidy_sheet.dart';
 import 'recipes_tab.dart';
 import 'share_sheet.dart';
 import 'shopping_tab.dart';
@@ -38,6 +40,8 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
     if (list == null) return;
     try {
       switch (action) {
+        case 'pantry':
+          await showPantrySheet(context, list.id);
         case 'edit':
           final result = await showListFormSheet(context, initialName: list.name, initialEmoji: list.emoji);
           if (result != null) await repo.updateList(list.id, name: result.name, emoji: result.emoji);
@@ -104,6 +108,12 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
       appBar: AppBar(
         title: Text('${list.emoji}  ${list.name}', overflow: TextOverflow.ellipsis),
         actions: [
+          if (_tabs.index == 0)
+            IconButton(
+              tooltip: 'Tidy up',
+              icon: const Icon(Icons.auto_fix_high),
+              onPressed: () => showTidySheet(context, list.id),
+            ),
           InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: () => showShareSheet(context, list),
@@ -117,6 +127,7 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
           PopupMenuButton<String>(
             onSelected: _menu,
             itemBuilder: (_) => [
+              const PopupMenuItem(value: 'pantry', child: Text('Pantry staples')),
               const PopupMenuItem(value: 'edit', child: Text('Rename')),
               if (!isOwner) const PopupMenuItem(value: 'leave', child: Text('Leave list')),
               if (isOwner) const PopupMenuItem(value: 'delete', child: Text('Delete list')),

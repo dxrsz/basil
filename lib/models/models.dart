@@ -33,6 +33,7 @@ class Item {
     required this.checkedBy,
     required this.recipeId,
     required this.createdAt,
+    this.recipeIds = const [],
   });
 
   final String id;
@@ -42,8 +43,14 @@ class Item {
   final String category;
   final bool checked;
   final String? checkedBy;
+
+  /// The primary meal this item came from (see [recipeIds]).
   final String? recipeId;
   final DateTime createdAt;
+
+  /// Every meal this item came from; merged items can come from several.
+  /// May include meals that have since been deleted.
+  final List<String> recipeIds;
 
   factory Item.fromJson(Map<String, dynamic> j) => Item(
     id: j['id'] as String,
@@ -55,6 +62,7 @@ class Item {
     checkedBy: j['checked_by'] as String?,
     recipeId: j['recipe_id'] as String?,
     createdAt: DateTime.parse(j['created_at'] as String),
+    recipeIds: (j['recipe_ids'] as List?)?.cast<String>() ?? [if (j['recipe_id'] != null) j['recipe_id'] as String],
   );
 
   Item copyWith({bool? checked}) => Item(
@@ -67,6 +75,7 @@ class Item {
     checkedBy: checkedBy,
     recipeId: recipeId,
     createdAt: createdAt,
+    recipeIds: recipeIds,
   );
 }
 
@@ -175,4 +184,70 @@ class Suggestion {
     reason: (j['reason'] as String?) ?? '',
     severity: j['severity'] == 'missing' ? SuggestionSeverity.missing : SuggestionSeverity.optional,
   );
+}
+
+/// Something the household said it already has (see lib/features/pantry/).
+class PantryStaple {
+  const PantryStaple({
+    required this.id,
+    required this.listId,
+    required this.name,
+    required this.nameKey,
+    required this.always,
+    required this.confirmedAt,
+  });
+
+  final String id;
+  final String listId;
+  final String name;
+
+  /// normalize_item_name(name), computed by the database.
+  final String nameKey;
+
+  /// Pinned as "always have"; never expires.
+  final bool always;
+  final DateTime confirmedAt;
+
+  factory PantryStaple.fromJson(Map<String, dynamic> j) => PantryStaple(
+    id: j['id'] as String,
+    listId: j['list_id'] as String,
+    name: j['name'] as String,
+    nameKey: (j['name_key'] as String?) ?? '',
+    always: (j['always'] as bool?) ?? false,
+    confirmedAt: DateTime.parse(j['confirmed_at'] as String),
+  );
+}
+
+/// A proposed "Tidy up" change: [itemIds].first is kept and renamed/
+/// re-quantified; the rest are merged into it.
+class TidyProposal {
+  const TidyProposal({
+    required this.kind,
+    required this.itemIds,
+    required this.name,
+    required this.quantity,
+    required this.reason,
+  });
+
+  /// "merge" or "fix".
+  final String kind;
+  final List<String> itemIds;
+  final String name;
+  final String? quantity;
+  final String reason;
+
+  factory TidyProposal.fromJson(Map<String, dynamic> j) => TidyProposal(
+    kind: j['kind'] as String,
+    itemIds: (j['item_ids'] as List).cast<String>(),
+    name: j['name'] as String,
+    quantity: j['quantity'] as String?,
+    reason: (j['reason'] as String?) ?? '',
+  );
+
+  Map<String, dynamic> toChange() => {
+    'keep_id': itemIds.first,
+    'remove_ids': itemIds.skip(1).toList(),
+    'name': name,
+    'quantity': quantity,
+  };
 }

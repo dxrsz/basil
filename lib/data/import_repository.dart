@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/models.dart';
 import '../util/categories.dart';
+import '../util/item_merge.dart';
 import 'providers.dart';
 
 /// What Lamar thinks an imported photo/link/text is.
@@ -79,12 +80,12 @@ class ImportRepository {
   Future<int> addItems(String listId, List<ImportedItem> items, {Iterable<Item> existing = const []}) async {
     final have = {
       for (final i in existing)
-        if (!i.checked) i.name.trim().toLowerCase(),
+        if (!i.checked) normalizeItemName(i.name),
     };
     final rows = <Map<String, dynamic>>[];
     for (final i in items) {
       final name = i.name.trim();
-      if (name.isEmpty || !have.add(name.toLowerCase())) continue;
+      if (name.isEmpty || !have.add(normalizeItemName(name))) continue;
       final qty = i.quantity?.trim();
       rows.add({
         'list_id': listId,

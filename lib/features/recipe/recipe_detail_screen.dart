@@ -5,8 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../models/models.dart';
+import '../../util/item_merge.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/recipe_image.dart';
+import '../pantry/add_meal_flow.dart';
+import '../pantry/pantry_data.dart';
+import '../pantry/pantry_logic.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   const RecipeDetailScreen({super.key, required this.listId, required this.recipeId});
@@ -59,6 +63,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   Widget build(BuildContext context) {
     final recipe = ref.watch(recipeProvider((listId: widget.listId, recipeId: widget.recipeId)));
     final items = ref.watch(itemsProvider(widget.listId)).value ?? const <Item>[];
+    final pantry = ref.watch(pantryProvider(widget.listId)).value ?? const <PantryStaple>[];
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
@@ -73,17 +78,26 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     }
 
     // Where each ingredient stands on the shopping list.
-    final mine = items.where((i) => i.recipeId == recipe.id).toList();
+    final mine = items.where((i) => i.recipeIds.contains(recipe.id)).toList();
     final onListCount = mine.where((i) => !i.checked).length;
+    final memory = {for (final p in pantry) p.nameKey: p};
+    final now = DateTime.now();
     _IngredientState stateOf(Ingredient ing) {
-      final n = ing.name.toLowerCase();
-      final matches = items.where((i) => i.name.toLowerCase() == n);
+      final n = normalizeItemName(ing.name);
+      final matches = items.where((i) => normalizeItemName(i.name) == n);
       if (matches.any((i) => !i.checked)) return _IngredientState.onList;
       if (matches.any((i) => i.checked)) return _IngredientState.inCart;
+      if (guessPantry(ing.name, memory, now).have) return _IngredientState.pantry;
       return _IngredientState.none;
     }
 
     final missingFromList = recipe.ingredients.where((i) => stateOf(i) == _IngredientState.none).length;
+    final inPantry = recipe.ingredients.where((i) => stateOf(i) == _IngredientState.pantry).length;
+    void addToList() => _run(() async {
+      final n = await showAddMealToListFlow(context, ref, recipe);
+      if (n == null) return null;
+      return n == 0 ? 'Nothing to add. Lamar\'s got you covered' : 'Added $n to the list';
+    });
 
     return Scaffold(
       body: CustomScrollView(
@@ -133,12 +147,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 if (recipe.ingredients.isNotEmpty)
                   if (missingFromList > 0)
                     FilledButton.icon(
-                      onPressed: _busy
-                          ? null
-                          : () => _run(() async {
-                              final n = await _repo.addRecipeToList(recipe.id);
-                              return n == 0 ? 'Everything\'s already on the list' : 'Added $n to the list';
-                            }),
+                      onPressed: _busy ? null : addToList,
                       icon: const Icon(Icons.add_shopping_cart),
                       label: Text('Add $missingFromList ingredient${missingFromList == 1 ? '' : 's'} to the list'),
                     )
@@ -165,6 +174,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                           Icon(Icons.check_circle, color: scheme.primary),
                           const SizedBox(width: 10),
                           const Expanded(child: Text('You\'ve got everything for this one')),
+                          if (inPantry > 0)
+                            TextButton(onPressed: _busy ? null : addToList, child: const Text('Out of something?')),
                         ],
                       ),
                     ),
@@ -189,7 +200,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 }
 
-enum _IngredientState { none, onList, inCart }
+enum _IngredientState { none, onList, inCart, pantry }
 
 class _IngredientRow extends StatelessWidget {
   const _IngredientRow({required this.ingredient, required this.state});
@@ -204,6 +215,7 @@ class _IngredientRow extends StatelessWidget {
     final (icon, color, label) = switch (state) {
       _IngredientState.onList => (Icons.shopping_cart_outlined, scheme.primary, 'On list'),
       _IngredientState.inCart => (Icons.check_circle, scheme.primary, 'Got it'),
+      _IngredientState.pantry => (Icons.kitchen_outlined, scheme.onSurfaceVariant, 'In pantry'),
       _IngredientState.none => (Icons.circle_outlined, scheme.outline, null),
     };
     return Padding(

@@ -12,6 +12,7 @@ import '../../data/repository.dart';
 import '../../models/models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/lamar.dart';
+import '../pantry/add_meal_flow.dart';
 import 'import_review_sheet.dart';
 
 export 'import_review_sheet.dart' show ImportDecision, ImportTarget;
@@ -36,7 +37,25 @@ Future<void> importToList(BuildContext context, WidgetRef ref, {required String 
             Ingredient(name: decision.items[i].name, quantity: decision.items[i].quantity, position: i),
         ],
       );
-      if (decision.addToList) await repo.addRecipeToList(id);
+      if (decision.addToList && context.mounted) {
+        // "Got this already?" review, same as adding any other meal.
+        await showAddMealToListFlow(
+          context,
+          ref,
+          Recipe(
+            id: id,
+            listId: listId,
+            name: decision.mealName,
+            imageUrl: null,
+            imageStatus: ImageStatus.idle,
+            createdAt: DateTime.now(),
+            ingredients: [
+              for (var i = 0; i < decision.items.length; i++)
+                Ingredient(name: decision.items[i].name, quantity: decision.items[i].quantity, position: i),
+            ],
+          ),
+        );
+      }
       // Same as the meal editor: the photo arrives via realtime when ready.
       unawaited(repo.generateImage(id).catchError((_) {}));
       router.go('/lists/$listId/recipes/$id');

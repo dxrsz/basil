@@ -6,7 +6,10 @@ Shared grocery lists that know what's for dinner. Flutter (iOS + Android) on Sup
 
 - **Lists, shared live.** Have as many lists as you like and invite people with a 6-character code. Everyone sees adds, check-offs and removals in real time, and checked items show who got them.
 - **Smart list entry.** Type `2 lb chicken thighs` and it's stored as *Chicken thighs · 2 lb*, filed under the right aisle (Produce, Meat, Pantry…).
-- **Meals.** A meal is just a name ("Taco bowls") and the items you associate with it. One tap puts its ingredients on the list, skipping anything already there, and items are tagged with the meal they came from.
+- **Meals.** A meal is just a name ("Taco bowls") and the items you associate with it. One tap puts its ingredients on the list, and items are tagged with the meal(s) they came from.
+- **"Got this already?"** Before a meal's ingredients go on the list, a quick review pre-marks pantry staples (oil, salt, spices, rice…) and anything the household said it has as *Got it*. Answers are remembered per list for 30 days (or forever, if pinned); see and edit them under *Pantry staples* in the list menu. Every meal-adding screen goes through `showAddMealToListFlow` (`lib/features/pantry/add_meal_flow.dart`).
+- **No duplicates.** Adding "avocados" when "Avocado · 2" is on the list bumps it to 3; compatible quantities add up ("2 cups" + "1 cup" → "3 cups"), others sit side by side ("1 bunch + 2"). Meals merge the same way, and a merged item remembers every meal it came from.
+- **Tidy up.** The *Tidy up* wand on the shopping list asks Lamar to look over the list and propose merges of near-duplicates ("Chicken" + "Chicken thighs"), combined quantities and obvious fixes. You accept or reject each one; nothing changes until you apply.
 - **"Forgetting rice?"** While you build a meal, the model reviews it. Likely-missing core ingredients show up as warning cards you can accept or dismiss, and nice-to-haves show up as chips. Dismissed ideas don't come back.
 - **Auto-fill.** Name a meal and tap *Fill in ingredients* to get a starter list.
 - **Snap or paste to add.** Photograph a handwritten list, a recipe card or the inside of the fridge, or paste a recipe link or a list. Lamar works out which it is and pulls out the items (or the meal and its ingredients). You review and edit everything before it's added. Recipe links are read from the page's schema.org Recipe data when it has some.
@@ -21,7 +24,7 @@ lib/
   models/, util/ (aisle categorisation + quantity parsing), widgets/
 supabase/
   migrations/    schema, RLS, RPCs, realtime publication, storage bucket
-  functions/     suggest-ingredients, generate-recipe-image, import-items (OpenAI; key never ships in the app)
+  functions/     suggest-ingredients, generate-recipe-image, import-items, tidy-list (OpenAI; key never ships in the app)
   tests/         Node tests for edge-function helpers: `node --test supabase/tests/` (Node 23+)
 ```
 
@@ -37,6 +40,7 @@ supabase secrets set OPENAI_API_KEY=sk-...
 supabase functions deploy suggest-ingredients
 supabase functions deploy generate-recipe-image
 supabase functions deploy import-items
+supabase functions deploy tidy-list
 ```
 
 Optional secrets: `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `OPENAI_VISION_MODEL` (default `gpt-5-mini`; must accept image input), `OPENAI_IMAGE_MODEL` (default `gpt-image-1`) and `OPENAI_REASONING_EFFORT` (default `minimal`).
@@ -101,3 +105,4 @@ OpenAI project as a final backstop.
 - `import-items` fetches user-supplied recipe links server-side through an SSRF guard (`import-items/safe_fetch.ts`): http/https on default ports only, every resolved address and every redirect hop must be public, 8 s timeout, 2 MB cap, HTML/JSON only. Photos are sent inline (base64) and never stored. `tool/import_items_e2e.mjs` exercises it against the live project with a throwaway user.
 - Generated images live in a public-read bucket under random UUID paths. Only the edge function writes to it.
 - `util/categories.dart` mirrors `public.categorize_item` in SQL; keep them in sync.
+- `util/item_merge.dart` mirrors `public.normalize_item_name` / `public.combine_quantities`; both are checked against `test/fixtures/item_merge_cases.json` (`flutter test`, and `dart run tool/pantry_tidy_check.dart` against the linked project).

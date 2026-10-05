@@ -120,14 +120,21 @@ class Repository {
     ).map((rows) => rows.map(Item.fromJson).toList());
   }
 
-  Future<void> addItem(String listId, String input) {
+  /// Adds a typed item. If the same item (plural/case-insensitively) is
+  /// already on the list to get, it's merged into that one instead and the
+  /// quantities are combined; [AddItemResult.merged] says which happened.
+  Future<AddItemResult> addItem(String listId, String input) async {
     final parsed = parseItemInput(input);
-    return _db.from('items').insert({
-      'list_id': listId,
-      'name': parsed.name,
-      'quantity': parsed.quantity,
-      'category': categorize(parsed.name),
-    });
+    final res = await _db.rpc(
+      'add_item',
+      params: {
+        'p_list_id': listId,
+        'p_name': parsed.name,
+        'p_quantity': parsed.quantity,
+        'p_category': categorize(parsed.name),
+      },
+    );
+    return AddItemResult.fromJson(res as Map<String, dynamic>);
   }
 
   Future<void> updateItem(String id, {required String name, String? quantity}) {
@@ -153,6 +160,7 @@ class Repository {
     'category': item.category,
     'checked': item.checked,
     'recipe_id': item.recipeId,
+    'recipe_ids': item.recipeIds,
   });
 
   Future<int> clearChecked(String listId) async =>
@@ -201,11 +209,64 @@ class Repository {
 
   Future<void> deleteRecipe(String id) => _db.from('recipes').delete().eq('id', id);
 
-  Future<int> addRecipeToList(String recipeId) async =>
-      (await _db.rpc('add_recipe_to_list', params: {'p_recipe_id': recipeId})) as int;
+  /// Puts a meal's ingredients on its list, merging with items already there
+  /// and leaving out anything named in [skip] (things the household has).
+  /// UI code should go through `showAddMealToListFlow` (features/pantry) so
+  /// people get to say what they already have.
+  Future<int> addRecipeToList(String recipeId, {List<String>? skip}) async => (await _db.rpc(
+    'add_recipe_to_list',
+    params: {'p_recipe_id': recipeId, if (skip != null && skip.isNotEmpty) 'p_skip': skip},
+  )) as int;
 
   Future<int> removeRecipeFromList(String recipeId) async =>
       (await _db.rpc('remove_recipe_from_list', params: {'p_recipe_id': recipeId})) as int;
+
+  // ---------------------------------------------------------------- pantry
+
+  Stream<List<PantryStaple>> watchPantry(String listId) {
+    return liveRows(
+      _db,
+      table: 'pantry_staples',
+      column: 'list_id',
+      value: listId,
+      orderBy: 'name_key',
+    ).map((rows) => rows.map(PantryStaple.fromJson).toList());
+  }
+
+  /// Records answers from the "Got this already?" review: [have] is
+  /// remembered (or re-confirmed); [forget] is forgotten unless pinned.
+  Future<void> rememberPantry(String listId, {required List<String> have, List<String> forget = const []}) =>
+      _db.rpc('remember_pantry', params: {'p_list_id': listId, 'p_have': have, 'p_forget': forget});
+
+  /// Adds (or pins) something the household always has.
+  Future<void> addPantryStaple(String listId, String name) => _db.from('pantry_staples').upsert({
+    'list_id': listId,
+    'name': name.trim(),
+    'always': true,
+  }, onConflict: 'list_id,name_key');
+
+  Future<void> setPantryAlways(String id, bool always) => _db
+      .from('pantry_staples')
+      .update({'always': always, 'confirmed_at': DateTime.now().toUtc().toIso8601String()})
+      .eq('id', id);
+
+  Future<void> deletePantryStaple(String id) => _db.from('pantry_staples').delete().eq('id', id);
+
+  // ------------------------------------------------------------------ tidy
+
+  /// Asks Lamar (the `tidy-list` edge function) for proposed clean-ups.
+  Future<List<TidyProposal>> proposeTidy(String listId) async {
+    final res = await _db.functions.invoke('tidy-list', body: {'list_id': listId});
+    final data = res.data as Map<String, dynamic>;
+    return (data['proposals'] as List).cast<Map<String, dynamic>>().map(TidyProposal.fromJson).toList();
+  }
+
+  /// Applies accepted proposals atomically; returns how many were applied
+  /// (ones whose items changed in the meantime are skipped).
+  Future<int> applyTidy(String listId, List<TidyProposal> accepted) async => (await _db.rpc(
+    'apply_tidy',
+    params: {'p_list_id': listId, 'p_changes': accepted.map((p) => p.toChange()).toList()},
+  )) as int;
 
   // -------------------------------------------------------------------- AI
 
@@ -233,6 +294,24 @@ class Repository {
     final data = res.data as Map<String, dynamic>;
     return (data['suggestions'] as List).cast<Map<String, dynamic>>().map(Suggestion.fromJson).toList();
   }
+}
+
+class AddItemResult {
+  const AddItemResult({required this.id, required this.merged, required this.name, required this.quantity});
+
+  final String id;
+
+  /// True when the item was combined with one already on the list.
+  final bool merged;
+  final String name;
+  final String? quantity;
+
+  factory AddItemResult.fromJson(Map<String, dynamic> j) => AddItemResult(
+    id: j['id'] as String,
+    merged: j['merged'] as bool,
+    name: j['name'] as String,
+    quantity: j['quantity'] as String?,
+  );
 }
 
 /// Turns Supabase exceptions into something worth showing a person.

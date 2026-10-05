@@ -65,10 +65,12 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
       await _repo.deleteItem(item.id);
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(
-          content: Text('Removed ${item.name}'),
-          action: SnackBarAction(label: 'Undo', onPressed: () => _repo.restoreItem(item)),
-        ));
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Removed ${item.name}'),
+            action: SnackBarAction(label: 'Undo', onPressed: () => _repo.restoreItem(item)),
+          ),
+        );
     } catch (e) {
       if (mounted) showError(context, friendlyError(e));
     }
@@ -145,17 +147,19 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                   ),
                 for (final category in orderedCategories) ...[
                   SliverToBoxAdapter(child: _SectionHeader('${categoryEmoji[category] ?? '🛍️'}  $category')),
-                  SliverList.list(children: [
-                    for (final item in groups[category]!)
-                      _ItemTile(
-                        key: ValueKey(item.id),
-                        item: item,
-                        recipeName: recipeNames[item.recipeId],
-                        onToggle: (v) => _toggle(item, v),
-                        onDelete: () => _delete(item),
-                        onTap: () => _edit(item),
-                      ),
-                  ]),
+                  SliverList.list(
+                    children: [
+                      for (final item in groups[category]!)
+                        _ItemTile(
+                          key: ValueKey(item.id),
+                          item: item,
+                          recipeName: recipeNames[item.recipeId],
+                          onToggle: (v) => _toggle(item, v),
+                          onDelete: () => _delete(item),
+                          onTap: () => _edit(item),
+                        ),
+                    ],
+                  ),
                 ],
                 if (done.isNotEmpty) ...[
                   SliverToBoxAdapter(
@@ -169,9 +173,8 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                               children: [
                                 Text(
                                   'In the cart (${done.length})',
-                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      ),
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                                 ),
                                 Icon(_showChecked ? Icons.expand_less : Icons.expand_more, size: 20),
                               ],
@@ -184,18 +187,20 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                     ),
                   ),
                   if (_showChecked)
-                    SliverList.list(children: [
-                      for (final item in done)
-                        _ItemTile(
-                          key: ValueKey(item.id),
-                          item: item,
-                          recipeName: recipeNames[item.recipeId],
-                          checkedBy: shared ? membersById[item.checkedBy] : null,
-                          onToggle: (v) => _toggle(item, v),
-                          onDelete: () => _delete(item),
-                          onTap: () => _edit(item),
-                        ),
-                    ]),
+                    SliverList.list(
+                      children: [
+                        for (final item in done)
+                          _ItemTile(
+                            key: ValueKey(item.id),
+                            item: item,
+                            recipeName: recipeNames[item.recipeId],
+                            checkedBy: shared ? membersById[item.checkedBy] : null,
+                            onToggle: (v) => _toggle(item, v),
+                            onDelete: () => _delete(item),
+                            onTap: () => _edit(item),
+                          ),
+                      ],
+                    ),
                 ],
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
@@ -220,10 +225,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-      ),
+      child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -268,11 +270,7 @@ class _ItemTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           child: Row(
             children: [
-              Checkbox(
-                value: item.checked,
-                shape: const CircleBorder(),
-                onChanged: (v) => onToggle(v ?? false),
-              ),
+              Checkbox(value: item.checked, shape: const CircleBorder(), onChanged: (v) => onToggle(v ?? false)),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
@@ -300,12 +298,12 @@ class _ItemTile extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                   decoration: BoxDecoration(
-                                    color: scheme.tertiaryContainer,
+                                    color: scheme.secondaryContainer,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     recipeName!,
-                                    style: theme.textTheme.labelSmall?.copyWith(color: scheme.onTertiaryContainer),
+                                    style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSecondaryContainer),
                                   ),
                                 ),
                             ],

@@ -14,12 +14,12 @@ class ShoppingList {
   final DateTime createdAt;
 
   factory ShoppingList.fromJson(Map<String, dynamic> j) => ShoppingList(
-        id: j['id'] as String,
-        name: j['name'] as String,
-        emoji: (j['emoji'] as String?) ?? '🛒',
-        ownerId: j['owner_id'] as String,
-        createdAt: DateTime.parse(j['created_at'] as String),
-      );
+    id: j['id'] as String,
+    name: j['name'] as String,
+    emoji: (j['emoji'] as String?) ?? '🛒',
+    ownerId: j['owner_id'] as String,
+    createdAt: DateTime.parse(j['created_at'] as String),
+  );
 }
 
 class Item {
@@ -46,28 +46,28 @@ class Item {
   final DateTime createdAt;
 
   factory Item.fromJson(Map<String, dynamic> j) => Item(
-        id: j['id'] as String,
-        listId: j['list_id'] as String,
-        name: j['name'] as String,
-        quantity: j['quantity'] as String?,
-        category: (j['category'] as String?) ?? 'Other',
-        checked: (j['checked'] as bool?) ?? false,
-        checkedBy: j['checked_by'] as String?,
-        recipeId: j['recipe_id'] as String?,
-        createdAt: DateTime.parse(j['created_at'] as String),
-      );
+    id: j['id'] as String,
+    listId: j['list_id'] as String,
+    name: j['name'] as String,
+    quantity: j['quantity'] as String?,
+    category: (j['category'] as String?) ?? 'Other',
+    checked: (j['checked'] as bool?) ?? false,
+    checkedBy: j['checked_by'] as String?,
+    recipeId: j['recipe_id'] as String?,
+    createdAt: DateTime.parse(j['created_at'] as String),
+  );
 
   Item copyWith({bool? checked}) => Item(
-        id: id,
-        listId: listId,
-        name: name,
-        quantity: quantity,
-        category: category,
-        checked: checked ?? this.checked,
-        checkedBy: checkedBy,
-        recipeId: recipeId,
-        createdAt: createdAt,
-      );
+    id: id,
+    listId: listId,
+    name: name,
+    quantity: quantity,
+    category: category,
+    checked: checked ?? this.checked,
+    checkedBy: checkedBy,
+    recipeId: recipeId,
+    createdAt: createdAt,
+  );
 }
 
 enum ImageStatus { idle, generating, ready, failed }
@@ -92,23 +92,23 @@ class Recipe {
   final List<Ingredient> ingredients;
 
   factory Recipe.fromJson(Map<String, dynamic> j) => Recipe(
-        id: j['id'] as String,
-        listId: j['list_id'] as String,
-        name: j['name'] as String,
-        imageUrl: j['image_url'] as String?,
-        imageStatus: ImageStatus.values.asNameMap()[j['image_status']] ?? ImageStatus.idle,
-        createdAt: DateTime.parse(j['created_at'] as String),
-      );
+    id: j['id'] as String,
+    listId: j['list_id'] as String,
+    name: j['name'] as String,
+    imageUrl: j['image_url'] as String?,
+    imageStatus: ImageStatus.values.asNameMap()[j['image_status']] ?? ImageStatus.idle,
+    createdAt: DateTime.parse(j['created_at'] as String),
+  );
 
   Recipe withIngredients(List<Ingredient> ingredients) => Recipe(
-        id: id,
-        listId: listId,
-        name: name,
-        imageUrl: imageUrl,
-        imageStatus: imageStatus,
-        createdAt: createdAt,
-        ingredients: ingredients,
-      );
+    id: id,
+    listId: listId,
+    name: name,
+    imageUrl: imageUrl,
+    imageStatus: imageStatus,
+    createdAt: createdAt,
+    ingredients: ingredients,
+  );
 }
 
 class Ingredient {
@@ -120,22 +120,17 @@ class Ingredient {
   final String? recipeId;
 
   factory Ingredient.fromJson(Map<String, dynamic> j) => Ingredient(
-        name: j['name'] as String,
-        quantity: j['quantity'] as String?,
-        position: (j['position'] as int?) ?? 0,
-        recipeId: j['recipe_id'] as String?,
-      );
+    name: j['name'] as String,
+    quantity: j['quantity'] as String?,
+    position: (j['position'] as int?) ?? 0,
+    recipeId: j['recipe_id'] as String?,
+  );
 
   Map<String, dynamic> toJson() => {'name': name, 'quantity': quantity};
 }
 
 class Member {
-  const Member({
-    required this.userId,
-    required this.role,
-    required this.displayName,
-    required this.avatarUrl,
-  });
+  const Member({required this.userId, required this.role, required this.displayName, required this.avatarUrl});
 
   final String userId;
   final String role;
@@ -167,12 +162,7 @@ class Member {
 enum SuggestionSeverity { missing, optional }
 
 class Suggestion {
-  const Suggestion({
-    required this.name,
-    required this.quantity,
-    required this.reason,
-    required this.severity,
-  });
+  const Suggestion({required this.name, required this.quantity, required this.reason, required this.severity});
 
   final String name;
   final String? quantity;
@@ -180,9 +170,9 @@ class Suggestion {
   final SuggestionSeverity severity;
 
   factory Suggestion.fromJson(Map<String, dynamic> j) => Suggestion(
-        name: j['name'] as String,
-        quantity: j['quantity'] as String?,
-        reason: (j['reason'] as String?) ?? '',
-        severity: j['severity'] == 'missing' ? SuggestionSeverity.missing : SuggestionSeverity.optional,
-      );
+    name: j['name'] as String,
+    quantity: j['quantity'] as String?,
+    reason: (j['reason'] as String?) ?? '',
+    severity: j['severity'] == 'missing' ? SuggestionSeverity.missing : SuggestionSeverity.optional,
+  );
 }

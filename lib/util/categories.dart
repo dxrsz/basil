@@ -32,8 +32,18 @@ final _rules = <(String, RegExp)>[
   ('Dairy & Eggs', RegExp(r'(milk|cheese|yogurt|yoghurt|butter|cream|egg|feta|parmesan|mozzarella|cheddar|ricotta)')),
   ('Bakery', RegExp(r'(bread|bun|bagel|tortilla|pita|naan|baguette|croissant|roll)')),
   ('Frozen', RegExp(r'(frozen|ice cream)')),
-  ('Produce', RegExp(r'(apple|banana|lemon|lime|orange|berry|berries|avocado|tomato|onion|garlic|potato|lettuce|spinach|kale|carrot|pepper|cucumber|broccoli|cilantro|parsley|basil|mint|ginger|scallion|celery|mushroom|zucchini|corn|cabbage|edamame|mango|grape|herb|jalape)')),
-  ('Pantry', RegExp(r'(rice|pasta|noodle|quinoa|oat|flour|sugar|bean|lentil|chickpea|can |canned|broth|stock|sauce|oil|vinegar|salt|spice|cumin|paprika|cinnamon|oregano|soy|honey|syrup|cereal|nut|seed|salsa|mayo|mustard|ketchup|sriracha|tahini|cracker|chip)')),
+  (
+    'Produce',
+    RegExp(
+      r'(apple|banana|lemon|lime|orange|berry|berries|avocado|tomato|onion|garlic|potato|lettuce|spinach|kale|carrot|pepper|cucumber|broccoli|cilantro|parsley|basil|mint|ginger|scallion|celery|mushroom|zucchini|corn|cabbage|edamame|mango|grape|herb|jalape)',
+    ),
+  ),
+  (
+    'Pantry',
+    RegExp(
+      r'(rice|pasta|noodle|quinoa|oat|flour|sugar|bean|lentil|chickpea|can |canned|broth|stock|sauce|oil|vinegar|salt|spice|cumin|paprika|cinnamon|oregano|soy|honey|syrup|cereal|nut|seed|salsa|mayo|mustard|ketchup|sriracha|tahini|cracker|chip)',
+    ),
+  ),
   ('Drinks', RegExp(r'(water|juice|soda|coffee|tea|wine|beer|kombucha|sparkling)')),
   ('Household', RegExp(r'(paper|towel|soap|detergent|foil|wrap|bag|sponge|trash|tissue)')),
 ];

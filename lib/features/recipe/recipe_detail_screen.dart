@@ -120,10 +120,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               stretchModes: const [StretchMode.zoomBackground],
               background: Hero(
                 tag: 'recipe-image-${recipe.id}',
-                child: RecipeImage(
-                  recipe: recipe,
-                  onRetry: () => _repo.generateImage(recipe.id, force: true),
-                ),
+                child: RecipeImage(recipe: recipe, onRetry: () => _repo.generateImage(recipe.id, force: true)),
               ),
             ),
           ),
@@ -139,9 +136,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       onPressed: _busy
                           ? null
                           : () => _run(() async {
-                                final n = await _repo.addRecipeToList(recipe.id);
-                                return n == 0 ? 'Everything\'s already on the list' : 'Added $n to the list';
-                              }),
+                              final n = await _repo.addRecipeToList(recipe.id);
+                              return n == 0 ? 'Everything\'s already on the list' : 'Added $n to the list';
+                            }),
                       icon: const Icon(Icons.add_shopping_cart),
                       label: Text('Add $missingFromList ingredient${missingFromList == 1 ? '' : 's'} to the list'),
                     )
@@ -150,9 +147,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       onPressed: _busy
                           ? null
                           : () => _run(() async {
-                                final n = await _repo.removeRecipeFromList(recipe.id);
-                                return 'Removed $n from the list';
-                              }),
+                              final n = await _repo.removeRecipeFromList(recipe.id);
+                              return 'Removed $n from the list';
+                            }),
                       icon: const Icon(Icons.remove_shopping_cart_outlined),
                       label: const Text('Take off the list'),
                     )
@@ -182,8 +179,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       style: TextStyle(color: scheme.onSurfaceVariant),
                     ),
                   ),
-                for (final ing in recipe.ingredients)
-                  _IngredientRow(ingredient: ing, state: stateOf(ing)),
+                for (final ing in recipe.ingredients) _IngredientRow(ingredient: ing, state: stateOf(ing)),
               ],
             ),
           ),

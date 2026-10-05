@@ -76,8 +76,7 @@ class Repository {
 
   Future<void> deleteList(String id) => _db.from('lists').delete().eq('id', id);
 
-  Future<void> leaveList(String id) =>
-      _db.from('list_members').delete().eq('list_id', id).eq('user_id', userId!);
+  Future<void> leaveList(String id) => _db.from('list_members').delete().eq('list_id', id).eq('user_id', userId!);
 
   Future<void> removeMember(String listId, String memberId) =>
       _db.from('list_members').delete().eq('list_id', listId).eq('user_id', memberId);
@@ -93,19 +92,16 @@ class Repository {
   }
 
   Stream<List<Member>> watchMembers(String listId) {
-    return _db
-        .from('list_members')
-        .stream(primaryKey: ['list_id', 'user_id'])
-        .eq('list_id', listId)
-        // The realtime payload has no profile data, so re-read with the join.
-        .asyncMap((_) async {
-          final rows = await _db
-              .from('list_members')
-              .select('user_id, role, profiles(display_name, avatar_url)')
-              .eq('list_id', listId)
-              .order('joined_at');
-          return rows.map(Member.fromJson).toList();
-        });
+    return _db.from('list_members').stream(primaryKey: ['list_id', 'user_id']).eq('list_id', listId)
+    // The realtime payload has no profile data, so re-read with the join.
+    .asyncMap((_) async {
+      final rows = await _db
+          .from('list_members')
+          .select('user_id, role, profiles(display_name, avatar_url)')
+          .eq('list_id', listId)
+          .order('joined_at');
+      return rows.map(Member.fromJson).toList();
+    });
   }
 
   // ----------------------------------------------------------------- items
@@ -130,27 +126,29 @@ class Repository {
   }
 
   Future<void> updateItem(String id, {required String name, String? quantity}) {
-    return _db.from('items').update({
-      'name': name,
-      'quantity': (quantity?.trim().isEmpty ?? true) ? null : quantity!.trim(),
-      'category': categorize(name),
-    }).eq('id', id);
+    return _db
+        .from('items')
+        .update({
+          'name': name,
+          'quantity': (quantity?.trim().isEmpty ?? true) ? null : quantity!.trim(),
+          'category': categorize(name),
+        })
+        .eq('id', id);
   }
 
-  Future<void> setChecked(String id, bool checked) =>
-      _db.from('items').update({'checked': checked}).eq('id', id);
+  Future<void> setChecked(String id, bool checked) => _db.from('items').update({'checked': checked}).eq('id', id);
 
   Future<void> deleteItem(String id) => _db.from('items').delete().eq('id', id);
 
   Future<void> restoreItem(Item item) => _db.from('items').insert({
-        'id': item.id,
-        'list_id': item.listId,
-        'name': item.name,
-        'quantity': item.quantity,
-        'category': item.category,
-        'checked': item.checked,
-        'recipe_id': item.recipeId,
-      });
+    'id': item.id,
+    'list_id': item.listId,
+    'name': item.name,
+    'quantity': item.quantity,
+    'category': item.category,
+    'checked': item.checked,
+    'recipe_id': item.recipeId,
+  });
 
   Future<int> clearChecked(String listId) async =>
       (await _db.rpc('clear_checked_items', params: {'p_list_id': listId})) as int;
@@ -181,12 +179,15 @@ class Repository {
     required String name,
     required List<Ingredient> ingredients,
   }) async {
-    final id = await _db.rpc('save_recipe', params: {
-      'p_list_id': listId,
-      'p_recipe_id': recipeId,
-      'p_name': name,
-      'p_ingredients': ingredients.map((i) => i.toJson()).toList(),
-    });
+    final id = await _db.rpc(
+      'save_recipe',
+      params: {
+        'p_list_id': listId,
+        'p_recipe_id': recipeId,
+        'p_name': name,
+        'p_ingredients': ingredients.map((i) => i.toJson()).toList(),
+      },
+    );
     return id as String;
   }
 
@@ -203,10 +204,7 @@ class Repository {
   /// Kicks off image generation. The edge function returns immediately and
   /// the finished image arrives through the recipes realtime stream.
   Future<void> generateImage(String recipeId, {bool force = false}) async {
-    await _db.functions.invoke(
-      'generate-recipe-image',
-      body: {'recipe_id': recipeId, 'force': force},
-    );
+    await _db.functions.invoke('generate-recipe-image', body: {'recipe_id': recipeId, 'force': force});
   }
 
   Future<List<Suggestion>> suggestIngredients({
@@ -215,17 +213,17 @@ class Repository {
     required List<String> dismissed,
     bool autofill = false,
   }) async {
-    final res = await _db.functions.invoke('suggest-ingredients', body: {
-      'meal': meal,
-      'ingredients': ingredients,
-      'dismissed': dismissed,
-      'mode': autofill ? 'autofill' : 'review',
-    });
+    final res = await _db.functions.invoke(
+      'suggest-ingredients',
+      body: {
+        'meal': meal,
+        'ingredients': ingredients,
+        'dismissed': dismissed,
+        'mode': autofill ? 'autofill' : 'review',
+      },
+    );
     final data = res.data as Map<String, dynamic>;
-    return (data['suggestions'] as List)
-        .cast<Map<String, dynamic>>()
-        .map(Suggestion.fromJson)
-        .toList();
+    return (data['suggestions'] as List).cast<Map<String, dynamic>>().map(Suggestion.fromJson).toList();
   }
 }
 

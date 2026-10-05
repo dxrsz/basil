@@ -1,4 +1,4 @@
-package app.basil.basil
+package com.lamarsgroceries.app
 
 import io.flutter.embedding.android.FlutterActivity
 

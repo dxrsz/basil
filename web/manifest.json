@@ -1,10 +1,10 @@
 {
-    "name": "Basil",
-    "short_name": "Basil",
+    "name": "Lamar's Groceries",
+    "short_name": "Lamar's",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FBFAF6",
-    "theme_color": "#3F7D4E",
+    "theme_color": "#1A1A1A",
     "description": "Shared grocery lists that know what's for dinner.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,

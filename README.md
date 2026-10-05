@@ -1,4 +1,4 @@
-# Basil 🌿
+# Lamar's Groceries 🐈‍⬛
 
 Shared grocery lists that know what's for dinner. Flutter (iOS + Android) on Supabase, with OpenAI behind Supabase Edge Functions.
 
@@ -40,7 +40,7 @@ Optional secrets: `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `OPENAI_IMAGE_MODE
 
 ### 2. OAuth
 
-In **Dashboard → Authentication → URL Configuration**, add `app.basil://login-callback` to *Redirect URLs*.
+In **Dashboard → Authentication → URL Configuration**, add `lamarsgroceries://login-callback` to *Redirect URLs*.
 
 In **Authentication → Providers**, enable:
 
@@ -62,6 +62,13 @@ cp supabase/.env.example supabase/.env   # add OPENAI_API_KEY + OAuth creds
 supabase start
 supabase functions serve --env-file supabase/.env
 ```
+
+## Rate limits
+
+The OpenAI-backed functions are limited per user (`public.consume_ai_quota`):
+suggestions 40 per 10 minutes / 300 per day, images 8 per hour / 30 per day.
+Over the limit, the function returns 429 with a friendly message and never
+calls OpenAI. Also set a monthly budget on the OpenAI project as a backstop.
 
 ## Notes
 

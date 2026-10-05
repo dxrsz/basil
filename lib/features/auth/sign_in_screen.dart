@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/lamar.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -53,19 +54,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(flex: 2),
-              // Align so the column's stretch doesn't widen the square tile.
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  width: 88,
-                  height: 88,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(28)),
-                  child: const Text('🌿', style: TextStyle(fontSize: 48)),
-                ),
-              ),
+              // Align so the column's stretch doesn't widen him.
+              const Align(alignment: Alignment.centerLeft, child: Lamar(width: 104)),
               const SizedBox(height: 28),
-              Text('Basil', style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800)),
+              Text(
+                'Lamar\'s Groceries',
+                style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.8),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Shared grocery lists that know what\'s for dinner.',
@@ -109,7 +104,7 @@ class _Feature extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: scheme.primary),
+          Icon(icon, size: 20, color: scheme.secondary),
           const SizedBox(width: 12),
           Text(text, style: Theme.of(context).textTheme.bodyLarge),
         ],

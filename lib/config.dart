@@ -6,7 +6,7 @@ class Config {
 
   /// Must match the URL scheme registered in Info.plist / AndroidManifest.xml
   /// and the redirect allow-list in Supabase Auth.
-  static const authRedirect = 'app.basil://login-callback';
+  static const authRedirect = 'lamarsgroceries://login-callback';
 
   static bool get isConfigured => supabaseUrl.isNotEmpty && supabaseKey.isNotEmpty;
 }

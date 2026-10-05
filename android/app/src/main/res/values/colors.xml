@@ -2,4 +2,5 @@
 <resources>
     <!-- Matches the in-app splash background (lib/features/splash/splash_screen.dart) -->
     <color name="splash_background">#FBFAF6</color>
+	<color name="ic_launcher_background">#F6D5CE</color>
 </resources>

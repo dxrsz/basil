@@ -52,9 +52,7 @@ class ListsScreen extends ConsumerWidget {
             onSelected: (v) {
               if (v == 'signout') ref.read(repositoryProvider).signOut();
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'signout', child: Text('Sign out')),
-            ],
+            itemBuilder: (_) => const [PopupMenuItem(value: 'signout', child: Text('Sign out'))],
           ),
         ],
       ),
@@ -65,27 +63,27 @@ class ListsScreen extends ConsumerWidget {
       ),
       body: switch (lists) {
         AsyncValue(:final value?) when value.isEmpty => EmptyState(
-            emoji: '🧺',
-            title: 'No lists yet',
-            message: 'Make a list for your household, or join one someone shared with you.',
-            action: OutlinedButton.icon(
-              onPressed: () => _join(context, ref),
-              icon: const Icon(Icons.group_add_outlined),
-              label: const Text('Join with a code'),
-            ),
+          emoji: '🧺',
+          title: 'No lists yet',
+          message: 'Make a list for your household, or join one someone shared with you.',
+          action: OutlinedButton.icon(
+            onPressed: () => _join(context, ref),
+            icon: const Icon(Icons.group_add_outlined),
+            label: const Text('Join with a code'),
           ),
+        ),
         AsyncValue(:final value?) => ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-            itemCount: value.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _ListCard(list: value[i]),
-          ),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          itemCount: value.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          itemBuilder: (_, i) => _ListCard(list: value[i]),
+        ),
         AsyncValue(:final error?) => EmptyState(
-            emoji: '😕',
-            title: 'Couldn\'t load your lists',
-            message: friendlyError(error),
-            action: FilledButton(onPressed: () => ref.invalidate(listsProvider), child: const Text('Try again')),
-          ),
+          emoji: '😕',
+          title: 'Couldn\'t load your lists',
+          message: friendlyError(error),
+          action: FilledButton(onPressed: () => ref.invalidate(listsProvider), child: const Text('Try again')),
+        ),
         _ => const Center(child: CircularProgressIndicator()),
       },
     );
@@ -133,8 +131,8 @@ class _ListCard extends ConsumerWidget {
                       total == 0
                           ? 'Empty'
                           : remaining == 0
-                              ? 'All done ✓'
-                              : '$remaining to get',
+                          ? 'All done ✓'
+                          : '$remaining to get',
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                     if (total > 0) ...[

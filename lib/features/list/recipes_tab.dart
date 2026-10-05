@@ -17,37 +17,36 @@ class RecipesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recipes = ref.watch(recipesProvider(listId));
     final items = ref.watch(itemsProvider(listId)).value ?? const <Item>[];
-    final onList = {for (final i in items) if (!i.checked && i.recipeId != null) i.recipeId!};
+    final onList = {
+      for (final i in items)
+        if (!i.checked && i.recipeId != null) i.recipeId!,
+    };
 
     return switch (recipes) {
       AsyncData(:final value) when value.isEmpty => EmptyState(
-          emoji: '🥘',
-          title: 'No meals yet',
-          message: 'Add a meal like "Taco bowls" with what goes in it. '
-              'Basil will flag anything you forgot and make a photo of it.',
-          action: FilledButton.icon(
-            onPressed: () => context.go('/lists/$listId/recipes/new'),
-            icon: const Icon(Icons.add),
-            label: const Text('Add a meal'),
-          ),
+        emoji: '🥘',
+        title: 'No meals yet',
+        message:
+            'Add a meal like "Taco bowls" with what goes in it. '
+            'Lamar will flag anything you forgot and snap a photo of it.',
+        action: FilledButton.icon(
+          onPressed: () => context.go('/lists/$listId/recipes/new'),
+          icon: const Icon(Icons.add),
+          label: const Text('Add a meal'),
         ),
+      ),
       AsyncData(:final value) => GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 240,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            childAspectRatio: 0.78,
-          ),
-          itemCount: value.length,
-          itemBuilder: (_, i) => _RecipeCard(
-            recipe: value[i],
-            onList: onList.contains(value[i].id),
-            listId: listId,
-          ),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 240,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          childAspectRatio: 0.78,
         ),
-      AsyncError(:final error) =>
-        EmptyState(emoji: '😕', title: 'Couldn\'t load meals', message: friendlyError(error)),
+        itemCount: value.length,
+        itemBuilder: (_, i) => _RecipeCard(recipe: value[i], onList: onList.contains(value[i].id), listId: listId),
+      ),
+      AsyncError(:final error) => EmptyState(emoji: '😕', title: 'Couldn\'t load meals', message: friendlyError(error)),
       _ => const Center(child: CircularProgressIndicator()),
     };
   }

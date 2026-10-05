@@ -16,3 +16,13 @@ export function userClient(req: Request): SupabaseClient {
 export function adminClient(): SupabaseClient {
   return createClient(url, serviceKey, { auth: { persistSession: false } });
 }
+
+/**
+ * Records one OpenAI-backed call for this user, or returns a message
+ * explaining why they're over their limit (see consume_ai_quota in SQL).
+ */
+export async function consumeQuota(userId: string, kind: "suggest" | "image"): Promise<string | null> {
+  const { data, error } = await adminClient().rpc("consume_ai_quota", { p_user: userId, p_kind: kind });
+  if (error) throw error;
+  return data as string | null;
+}

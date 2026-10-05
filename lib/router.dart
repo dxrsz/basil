@@ -44,10 +44,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'recipes/:recipeId',
-                builder: (_, s) => RecipeDetailScreen(
-                  listId: s.pathParameters['listId']!,
-                  recipeId: s.pathParameters['recipeId']!,
-                ),
+                builder: (_, s) =>
+                    RecipeDetailScreen(listId: s.pathParameters['listId']!, recipeId: s.pathParameters['recipeId']!),
                 routes: [
                   GoRoute(
                     path: 'edit',

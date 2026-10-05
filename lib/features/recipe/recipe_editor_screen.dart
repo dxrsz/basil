@@ -13,7 +13,7 @@ import '../../widgets/empty_state.dart';
 
 /// Create or edit a meal: a name plus the ingredients you associate with it.
 ///
-/// While you type, Basil asks the model what you've probably forgotten and
+/// While you type, Lamar asks the model what you've probably forgotten and
 /// shows each idea as a card you can accept or dismiss. Dismissed ideas are
 /// sent back with later requests so they don't reappear.
 class RecipeEditorScreen extends ConsumerStatefulWidget {
@@ -166,18 +166,20 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
       if (core.isNotEmpty) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(
-            content: Text('Added ${core.length} ingredients'),
-            action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () => setState(() {
-                _ingredients
-                  ..clear()
-                  ..addAll(before);
-                _suggestions = [];
-              }),
+          ..showSnackBar(
+            SnackBar(
+              content: Text('Added ${core.length} ingredients'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () => setState(() {
+                  _ingredients
+                    ..clear()
+                    ..addAll(before);
+                  _suggestions = [];
+                }),
+              ),
             ),
-          ));
+          );
       }
     } catch (e) {
       if (mounted && seq == _reviewSeq) setState(() => _aiError = friendlyError(e));
@@ -278,7 +280,10 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
     final scheme = theme.colorScheme;
 
     if (!_loaded) {
-      return Scaffold(appBar: AppBar(), body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     final missing = _suggestions.where((s) => s.severity == SuggestionSeverity.missing).toList();
@@ -337,11 +342,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           const SizedBox(height: 8),
 
           if (_ingredients.isEmpty)
-            _AutofillCard(
-              meal: _meal,
-              busy: _autofilling,
-              onPressed: _meal.isEmpty || _autofilling ? null : _autofill,
-            )
+            _AutofillCard(meal: _meal, busy: _autofilling, onPressed: _meal.isEmpty || _autofilling ? null : _autofill)
           else
             Wrap(
               spacing: 8,
@@ -355,10 +356,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
               ],
             ),
           if (_autofilling && _ingredients.isNotEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 12),
-              child: LinearProgressIndicator(),
-            ),
+            const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
           const SizedBox(height: 12),
           TextField(
             controller: _ingredientInput,
@@ -385,10 +383,10 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Icon(Icons.auto_awesome, size: 18, color: scheme.primary),
+                      Icon(Icons.auto_awesome, size: 18, color: scheme.secondary),
                       const SizedBox(width: 8),
                       Text(
-                        _reviewing ? 'Checking your list…' : 'Basil noticed',
+                        _reviewing ? 'Checking your list…' : 'Lamar noticed',
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       if (_reviewing) ...[
@@ -402,8 +400,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                   ),
                   const SizedBox(height: 8),
                 ],
-                if (_aiError != null)
-                  Text(_aiError!, style: theme.textTheme.bodySmall?.copyWith(color: scheme.error)),
+                if (_aiError != null) Text(_aiError!, style: theme.textTheme.bodySmall?.copyWith(color: scheme.error)),
                 for (final s in missing)
                   _SuggestionCard(suggestion: s, onAccept: () => _accept(s), onDismiss: () => _dismiss(s)),
                 if (optional.isNotEmpty) ...[
@@ -445,7 +442,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'After you save, Basil makes a photo of the finished meal using these ingredients.',
+                  'After you save, Lamar snaps a photo of the finished meal using these ingredients.',
                   style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ),
@@ -478,7 +475,7 @@ class _AutofillCard extends StatelessWidget {
             children: [
               busy
                   ? const SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2.5))
-                  : Icon(Icons.auto_awesome, color: scheme.primary),
+                  : Icon(Icons.auto_awesome, color: scheme.secondary),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -488,8 +485,8 @@ class _AutofillCard extends StatelessWidget {
                       busy
                           ? 'Thinking about $meal…'
                           : meal.isEmpty
-                              ? 'Name the meal and Basil can fill in the ingredients'
-                              : 'Fill in ingredients for $meal',
+                          ? 'Name the meal and Lamar can fill in the ingredients'
+                          : 'Fill in ingredients for $meal',
                       style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 2),
@@ -536,15 +533,23 @@ class _SuggestionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text.rich(
-                    TextSpan(children: [
-                      const TextSpan(text: 'Forgetting '),
-                      TextSpan(text: suggestion.name.toLowerCase(), style: const TextStyle(fontWeight: FontWeight.w800)),
-                      const TextSpan(text: '?'),
-                    ]),
+                    TextSpan(
+                      children: [
+                        const TextSpan(text: 'Forgetting '),
+                        TextSpan(
+                          text: suggestion.name.toLowerCase(),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        const TextSpan(text: '?'),
+                      ],
+                    ),
                     style: theme.textTheme.bodyLarge?.copyWith(color: fg),
                   ),
                   if (suggestion.reason.isNotEmpty)
-                    Text(suggestion.reason, style: theme.textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.85))),
+                    Text(
+                      suggestion.reason,
+                      style: theme.textTheme.bodySmall?.copyWith(color: fg.withValues(alpha: 0.85)),
+                    ),
                 ],
               ),
             ),

@@ -5,7 +5,7 @@
 // ->   { suggestions: [{ name, quantity, reason, severity: "missing" | "optional" }] }
 
 import { error, json, preflight } from "../_shared/cors.ts";
-import { userClient } from "../_shared/clients.ts";
+import { consumeQuota, userClient } from "../_shared/clients.ts";
 import { structured } from "../_shared/openai.ts";
 
 type Suggestion = {
@@ -85,6 +85,9 @@ Deno.serve(async (req) => {
   const dismissed = (body.dismissed ?? []).map((s) => String(s).trim()).filter(Boolean).slice(0, 60);
   const autofill = body.mode === "autofill";
   if (!meal) return error("meal is required");
+
+  const limited = await consumeQuota(auth.user.id, "suggest");
+  if (limited) return error(limited, 429);
 
   const userPrompt = [
     `Meal: ${meal}`,

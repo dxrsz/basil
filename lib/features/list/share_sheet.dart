@@ -29,7 +29,7 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
   late final Future<String> _code = ref.read(repositoryProvider).createInvite(widget.list.id);
 
   String _message(String code) =>
-      'Join my "${widget.list.name}" list on Basil 🌿\nOpen the app, tap "Join a list" and enter: $code';
+      'Join my "${widget.list.name}" list on Lamar\'s Groceries 🐈‍⬛\nOpen the app, tap "Join a list" and enter: $code';
 
   @override
   Widget build(BuildContext context) {

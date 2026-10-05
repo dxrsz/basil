@@ -39,10 +39,10 @@ class _BootstrapState extends State<_Bootstrap> {
         } else if (!Config.isConfigured || snapshot.hasError) {
           child = _ProblemApp(
             key: const ValueKey('problem'),
-            message: Config.isConfigured ? 'Basil couldn\'t start.\n\n${snapshot.error}' : 'Basil isn\'t configured.\n\nRun with:\nflutter run --dart-define-from-file=env.json\n\n(see env.example.json)',
+            message: Config.isConfigured ? 'Lamar\'s Groceries couldn\'t start.\n\n${snapshot.error}' : 'Lamar\'s Groceries isn\'t configured.\n\nRun with:\nflutter run --dart-define-from-file=env.json\n\n(see env.example.json)',
           );
         } else {
-          child = const ProviderScope(key: ValueKey('app'), child: BasilApp());
+          child = const ProviderScope(key: ValueKey('app'), child: LamarsApp());
         }
         return AnimatedSwitcher(duration: const Duration(milliseconds: 350), child: child);
       },
@@ -50,13 +50,13 @@ class _BootstrapState extends State<_Bootstrap> {
   }
 }
 
-class BasilApp extends ConsumerWidget {
-  const BasilApp({super.key});
+class LamarsApp extends ConsumerWidget {
+  const LamarsApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'Basil',
+      title: 'Lamar\'s Groceries',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
@@ -66,7 +66,7 @@ class BasilApp extends ConsumerWidget {
   }
 }
 
-/// Basil is a phone app; on wide screens (web, tablets) keep it phone-shaped
+/// This is a phone app; on wide screens (web, tablets) keep it phone-shaped
 /// and centred instead of stretching lists across the window.
 class _PhoneWidth extends StatelessWidget {
   const _PhoneWidth({required this.child});

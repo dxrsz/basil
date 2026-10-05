@@ -19,11 +19,7 @@ class MemberAvatar extends StatelessWidget {
       foregroundImage: url != null ? CachedNetworkImageProvider(url) : null,
       child: Text(
         member.initials,
-        style: TextStyle(
-          fontSize: radius * 0.75,
-          fontWeight: FontWeight.w600,
-          color: scheme.onSecondaryContainer,
-        ),
+        style: TextStyle(fontSize: radius * 0.75, fontWeight: FontWeight.w600, color: scheme.onSecondaryContainer),
       ),
     );
   }
@@ -64,7 +60,10 @@ class AvatarStack extends StatelessWidget {
               child: CircleAvatar(
                 radius: radius + 2,
                 backgroundColor: surface,
-                child: CircleAvatar(radius: radius, child: Text('+$extra', style: TextStyle(fontSize: radius * 0.7))),
+                child: CircleAvatar(
+                  radius: radius,
+                  child: Text('+$extra', style: TextStyle(fontSize: radius * 0.7)),
+                ),
               ),
             ),
         ],

@@ -5,7 +5,7 @@
 // it expires (the expiry date is printed).
 //
 //   node tool/apple/client_secret.mjs --p8 ~/AuthKey_ABC123.p8 \
-//     --key-id ABC123 --team-id TEAM123456 --client-id app.basil.signin
+//     --key-id ABC123 --team-id TEAM123456 --client-id com.lamarsgroceries.signin
 
 import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -16,7 +16,7 @@ const args = Object.fromEntries(
 );
 for (const k of ['p8', 'key-id', 'team-id', 'client-id']) {
   if (!args[k]) {
-    console.error(`missing --${k}\nusage: node client_secret.mjs --p8 AuthKey_XXX.p8 --key-id XXX --team-id YYY --client-id app.basil.signin`);
+    console.error(`missing --${k}\nusage: node client_secret.mjs --p8 AuthKey_XXX.p8 --key-id XXX --team-id YYY --client-id com.lamarsgroceries.signin`);
     process.exit(1);
   }
 }

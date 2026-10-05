@@ -1,4 +1,4 @@
-import 'package:basil/util/categories.dart';
+import 'package:lamars_groceries/util/categories.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

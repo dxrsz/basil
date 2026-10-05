@@ -6,7 +6,7 @@
 // reaches clients through realtime updates on the `recipes` row.
 
 import { error, json, preflight } from "../_shared/cors.ts";
-import { adminClient, userClient } from "../_shared/clients.ts";
+import { adminClient, consumeQuota, userClient } from "../_shared/clients.ts";
 import { generateImage } from "../_shared/openai.ts";
 
 const BUCKET = "recipe-images";
@@ -44,6 +44,8 @@ Deno.serve(async (req) => {
 
   // Read through the user's client: RLS guarantees they're a member of the list.
   const user = userClient(req);
+  const { data: auth } = await user.auth.getUser();
+  if (!auth.user) return error("Not signed in", 401);
   const { data: recipe, error: readErr } = await user
     .from("recipes")
     .select("id, list_id, name, image_url, image_status, image_signature, recipe_ingredients(name, position)")
@@ -60,6 +62,10 @@ Deno.serve(async (req) => {
   if (!body.force && recipe.image_signature === signature && recipe.image_status !== "failed") {
     return json({ status: recipe.image_status });
   }
+
+  // Only count calls that will actually reach OpenAI.
+  const limited = await consumeQuota(auth.user.id, "image");
+  if (limited) return error(limited, 429);
 
   const admin = adminClient();
   await admin

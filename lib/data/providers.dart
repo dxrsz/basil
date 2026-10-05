@@ -10,9 +10,7 @@ final repositoryProvider = Provider<Repository>((ref) => Repository(ref.watch(su
 
 final enabledProvidersProvider = FutureProvider<Set<OAuthProvider>>((ref) => Repository.enabledProviders());
 
-final authStateProvider = StreamProvider<AuthState>(
-  (ref) => ref.watch(supabaseProvider).auth.onAuthStateChange,
-);
+final authStateProvider = StreamProvider<AuthState>((ref) => ref.watch(supabaseProvider).auth.onAuthStateChange);
 
 /// The signed-in user's id; rebuilds dependents when the user changes.
 final currentUserIdProvider = Provider<String?>((ref) {
@@ -66,8 +64,7 @@ final recipesProvider = Provider.family<AsyncValue<List<Recipe>>, String>((ref, 
     (byRecipe[i.recipeId!] ??= []).add(i);
   }
   return AsyncData([
-    for (final r in rows)
-      r.withIngredients((byRecipe[r.id] ?? [])..sort((a, b) => a.position.compareTo(b.position))),
+    for (final r in rows) r.withIngredients((byRecipe[r.id] ?? [])..sort((a, b) => a.position.compareTo(b.position))),
   ]);
 });
 

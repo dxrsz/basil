@@ -73,8 +73,7 @@ class _Generating extends StatefulWidget {
 }
 
 class _GeneratingState extends State<_Generating> with SingleTickerProviderStateMixin {
-  late final _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))
-    ..repeat();
+  late final _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
 
   @override
   void dispose() {

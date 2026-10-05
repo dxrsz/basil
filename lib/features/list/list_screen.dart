@@ -91,7 +91,11 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
         appBar: AppBar(),
         body: loading
             ? const Center(child: CircularProgressIndicator())
-            : const EmptyState(emoji: '🫥', title: 'List not found', message: 'It may have been deleted, or you left it.'),
+            : const EmptyState(
+                emoji: '🫥',
+                title: 'List not found',
+                message: 'It may have been deleted, or you left it.',
+              ),
       );
     }
 

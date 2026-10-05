@@ -17,11 +17,15 @@ export function adminClient(): SupabaseClient {
   return createClient(url, serviceKey, { auth: { persistSession: false } });
 }
 
+/** AI features with rate limits; each must have a row in public.ai_limits. */
+export type QuotaKind = "suggest" | "image" | "plan" | "tidy" | "import";
+
 /**
  * Records one OpenAI-backed call for this user, or returns a message
- * explaining why they're over their limit (see consume_ai_quota in SQL).
+ * explaining why they're over a limit (see consume_ai_quota / ai_limits in SQL).
+ * Call it after validating the request and before calling OpenAI.
  */
-export async function consumeQuota(userId: string, kind: "suggest" | "image"): Promise<string | null> {
+export async function consumeQuota(userId: string, kind: QuotaKind): Promise<string | null> {
   const { data, error } = await adminClient().rpc("consume_ai_quota", { p_user: userId, p_kind: kind });
   if (error) throw error;
   return data as string | null;

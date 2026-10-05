@@ -21,7 +21,8 @@ class RecipesTab extends ConsumerWidget {
     final items = ref.watch(itemsProvider(listId)).value ?? const <Item>[];
     final onList = {
       for (final i in items)
-        if (!i.checked && i.recipeId != null) i.recipeId!,
+        // recipeIds: a merged item can belong to several meals.
+        if (!i.checked) ...i.recipeIds,
     };
 
     return switch (recipes) {

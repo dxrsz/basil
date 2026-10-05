@@ -78,7 +78,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
       ..clear()
       ..addAll(r.ingredients);
     final items = ref.read(itemsProvider(widget.listId)).value ?? const <Item>[];
-    _addToList = items.any((i) => i.recipeId == r.id && !i.checked);
+    _addToList = items.any((i) => i.recipeIds.contains(r.id) && !i.checked);
   }
 
   @override

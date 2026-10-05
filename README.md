@@ -17,6 +17,20 @@ Shared grocery lists that know what's for dinner. Flutter (iOS + Android) on Sup
 - **Works offline.** Lists, items, meals and members are cached on the device, so the app opens and the list works with no signal. Item changes (add, check, edit, remove, clear) apply at once, wait in a persistent outbox, and replay in order when you're back; a banner says when you're offline and when everything has synced. Meals and AI features ask for a connection.
 - **Meal photos.** After saving, an image of the finished dish is generated from the actual ingredients. It regenerates only when the ingredients meaningfully change, and it reaches every device via realtime.
 
+## AI features
+
+- **Plan my week** (Meals tab): a one-time kitchen profile (diet, allergies,
+  effort, appliances, tastes), then one meal card per night with keep / swap /
+  nudge. Plans reuse perishables across the week; allergies and diets are
+  enforced server-side (`plan-meals`, `safety.ts`). Photos are generated only
+  for kept meals. Meal memory (👍/👎, "make again") feeds future plans.
+- **What can I make tonight?** from what you have or recently bought.
+- **Got this already?** before a meal's ingredients go on the list (pantry
+  staples remembered per list), merge-on-add, and AI **Tidy up**.
+- **Snap or paste**: photos of lists, recipe cards or the fridge, recipe links
+  and pasted text, always reviewed before adding (`import-items`).
+- **Store mode** and **offline** list editing with a sync queue.
+
 ## Layout
 
 ```

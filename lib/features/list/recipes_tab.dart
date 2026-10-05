@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/planner_repository.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../models/models.dart';
@@ -9,6 +10,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/recipe_image.dart';
 import '../import/import_flow.dart';
 import '../planner/meal_memory.dart';
+import '../planner/planner_models.dart';
 
 class RecipesTab extends ConsumerWidget {
   const RecipesTab({super.key, required this.listId});
@@ -94,6 +96,8 @@ class _RecipeCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final events = ref.watch(mealEventsProvider(listId)).value ?? const <MealEvent>[];
+    final rating = latestRating(events, recipe.id, userId: ref.watch(currentUserIdProvider));
     return Card(
       child: InkWell(
         onTap: () => context.go('/lists/$listId/recipes/${recipe.id}'),
@@ -112,6 +116,22 @@ class _RecipeCard extends ConsumerWidget {
                       onRetry: () => ref.read(repositoryProvider).generateImage(recipe.id, force: true),
                     ),
                   ),
+                  if (rating != null)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Tooltip(
+                        message: ratingText(rating),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(rating > 0 ? '👍' : '👎', style: const TextStyle(fontSize: 14)),
+                        ),
+                      ),
+                    ),
                   if (onList)
                     Positioned(
                       top: 8,

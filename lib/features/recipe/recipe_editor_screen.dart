@@ -111,9 +111,25 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   String _lastNameReviewed = '';
 
   void _onNameChanged() {
-    if (_meal == _lastNameReviewed) return;
+    // Name cleared on an untouched Surprise pick: start over, so Surprise me
+    // (which only shows for an empty meal) comes back.
+    if (_meal.isEmpty && _pick != null && _isUntouchedPick()) {
+      _ingredients.clear();
+      _suggestions = [];
+      _pick = null;
+    }
+    // Always rebuild: what's shown depends on whether there's a name. (This
+    // used to return early when the name matched the last reviewed one, which
+    // starts as '', so clearing the name never brought Surprise me back.)
     setState(() {});
+    if (_meal == _lastNameReviewed) return;
     _scheduleReview();
+  }
+
+  bool _isUntouchedPick() {
+    final pick = _pick!.ingredients;
+    return _ingredients.length == pick.length &&
+        [for (var i = 0; i < pick.length; i++) _ingredients[i].name == pick[i].name].every((same) => same);
   }
 
   void _scheduleReview() {
@@ -278,15 +294,13 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
       // The pick already has a full ingredient list; don't ask for a review of it.
       _lastNameReviewed = idea.name;
       _debounce?.cancel();
-      setState(() {
-        _pick = idea;
-        _name.text = idea.name;
-        _ingredients
-          ..clear()
-          ..addAll(idea.toRecipeIngredients());
-        _suggestions = [];
-        _aiError = null;
-      });
+      _pick = idea;
+      _ingredients
+        ..clear()
+        ..addAll(idea.toRecipeIngredients());
+      _suggestions = [];
+      _aiError = null;
+      _name.text = idea.name; // the listener rebuilds
     } catch (e) {
       if (mounted) showError(context, friendlyError(e));
     } finally {
@@ -407,10 +421,12 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
             ),
           const SizedBox(height: 24),
 
-          Row(
+          // Wraps rather than overflowing with large text.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text('Ingredients', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-              const Spacer(),
               if (_ingredients.isNotEmpty)
                 TextButton.icon(
                   onPressed: _meal.isEmpty || _autofilling ? null : _autofill,

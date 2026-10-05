@@ -284,12 +284,27 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           plannerRepositoryProvider.overrideWithValue(FakePlanner()),
+          currentUserIdProvider.overrideWithValue('me'),
           itemsProvider.overrideWith((ref, _) => Stream.value(const <Item>[])),
           recipesProvider.overrideWith(
             (ref, _) => AsyncData([r('a', 'Sheet-pan chicken with lemony potatoes'), r('b', 'Taco bowls')]),
           ),
           mealEventsProvider.overrideWith(
-            (ref, _) => Stream.value([e('a', const Duration(days: 3)), e('b', const Duration(days: 30))]),
+            (ref, _) => Stream.value([
+              e('a', const Duration(days: 3)),
+              e('b', const Duration(days: 30)),
+              // I've already given Taco bowls a 👍: its card shows a badge.
+              MealEvent(
+                id: 'rb',
+                listId: 'l',
+                recipeId: 'b',
+                mealName: 'Taco bowls',
+                kind: MealEventKind.rated,
+                rating: 1,
+                userId: 'me',
+                createdAt: now.subtract(const Duration(days: 31)),
+              ),
+            ]),
           ),
         ],
       );
@@ -304,6 +319,13 @@ void main() {
       expect(find.textContaining('You haven\'t made Taco bowls in 4 weeks'), findsOneWidget);
       expect(find.text('Plan my week'), findsOneWidget);
       expect(tester.takeException(), isNull);
+      // The meal I rated shows my vote on its card in the grid.
+      await tester.dragUntilVisible(
+        find.byTooltip('You loved it'),
+        find.byType(Scrollable).first,
+        const Offset(0, -200),
+      );
+      expect(find.byTooltip('You loved it'), findsOneWidget);
     });
 
     testWidgets('empty Meals tab under the list app bar', (tester) async {

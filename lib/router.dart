@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/providers.dart';
+import 'features/account/account_screen.dart';
+import 'features/account/ai_consent_sheet.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/join/join_routing.dart';
 import 'features/join/join_screen.dart';
@@ -35,8 +37,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/',
-        builder: (_, _) => const ListsScreen(),
+        builder: (_, _) => const AiConsentGate(child: ListsScreen()),
         routes: [
+          GoRoute(path: 'account', builder: (_, _) => const AccountScreen()),
           GoRoute(path: 'settings/notifications', builder: (_, _) => const NotificationSettingsScreen()),
           GoRoute(
             path: 'lists/:listId',

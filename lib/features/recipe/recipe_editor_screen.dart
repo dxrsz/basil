@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/account_repository.dart';
 import '../../data/planner_repository.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
@@ -146,6 +147,9 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   }
 
   Future<void> _review() async {
+    // The automatic check stays quiet for people who turned AI helpers off;
+    // the Auto-fill button still explains how to turn them on.
+    if (ref.read(myProfileProvider).value?.aiConsent == false) return;
     final seq = ++_reviewSeq;
     _lastNameReviewed = _meal;
     setState(() {

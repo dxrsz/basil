@@ -1,6 +1,6 @@
 {
     "name": "Lamar's Groceries",
-    "short_name": "Lamar's",
+    "short_name": "Groceries",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FBFAF6",

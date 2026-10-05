@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy · Lamar's Groceries</title>
+  <meta name="description" content="What Lamar's Groceries collects, why, who processes it, and how to get it or delete it.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    :root { --bg: #FBFAF6; --fg: #1A1A1A; --muted: #5c5a55; --rule: #e4e1d8; --accent: #1A1A1A; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #141414; --fg: #F2F0EA; --muted: #a9a59b; --rule: #2c2b28; --accent: #F2F0EA; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg);
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; }
+    h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 4px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 8px; padding-top: 16px; border-top: 1px solid var(--rule); }
+    p, li { color: var(--fg); }
+    .muted { color: var(--muted); font-size: .95rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+    th, td { text-align: left; vertical-align: top; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--rule); }
+    th { font-weight: 600; }
+    .wrap { overflow-x: auto; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="muted">Lamar's Groceries · Last updated 5 October 2026</p>
+
+  <p>Lamar's Groceries is a shared grocery list with meal planning. This page explains what the app
+    stores, why, who helps run it, and how you can download or delete your data. The short version:
+    we keep what's needed to run your lists, we don't sell anything, there are no ads or trackers,
+    and the AI features are off until you turn them on.</p>
+
+  <h2>Who we are</h2>
+  <p>Lamar's Groceries is run by Evan Rose, who is the data controller for the app.
+    For any privacy question or request, email
+    <a href="mailto:privacy@lamarsgroceries.app">privacy@lamarsgroceries.app</a>.</p>
+
+  <h2>What we store and why</h2>
+  <div class="wrap"><table>
+    <tr><th>Data</th><th>Why</th><th>Legal basis (GDPR)</th></tr>
+    <tr><td>Your email, name and profile picture from Apple or Google, and which of those you sign in with</td>
+      <td>To sign you in and show list-mates who added what</td><td>Contract</td></tr>
+    <tr><td>Your lists, items, meals, ingredients, meal plans, ratings, pantry and taste notes</td>
+      <td>That's the app</td><td>Contract</td></tr>
+    <tr><td>Who is on each list, and who's shopping right now</td>
+      <td>Sharing and live updates</td><td>Contract</td></tr>
+    <tr><td>Device push tokens and your notification settings</td>
+      <td>To send the notifications you ask for</td><td>Contract</td></tr>
+    <tr><td>A count of your recent AI requests</td>
+      <td>To stop abuse and keep costs fair</td><td>Legitimate interest</td></tr>
+    <tr><td>Whether you turned AI helpers on, and when</td>
+      <td>To respect your choice</td><td>Legal obligation</td></tr>
+    <tr><td>An Apple sign-in token (only if you use Sign in with Apple)</td>
+      <td>So deleting your account also disconnects it from Apple</td><td>Contract</td></tr>
+  </table></div>
+  <p>We don't collect your location, contacts or advertising IDs. There's no analytics or tracking SDK in the app.
+    Photos you import are processed to read the items and are not stored.</p>
+
+  <h2>AI helpers (OpenAI)</h2>
+  <p>Meal ideas, ingredient checks, meal pictures, list tidying and photo imports use OpenAI. They only run
+    if you turn on AI helpers, which the app asks about once and which you can change any time in
+    <strong>Account</strong>. When you use one, the meal names, list items, taste notes or photo involved are sent to
+    OpenAI to get an answer. Your email and name are never sent. Under OpenAI's API terms, this data
+    isn't used to train their models and is kept for up to 30 days for abuse monitoring.</p>
+
+  <h2>Who helps run the app</h2>
+  <p>These providers process data for us under data processing agreements. Some are in the United States.
+    Transfers rely on the EU–US Data Privacy Framework and/or the European Commission's Standard Contractual Clauses.</p>
+  <div class="wrap"><table>
+    <tr><th>Provider</th><th>What for</th><th>Where</th></tr>
+    <tr><td>Supabase</td><td>Database, sign-in, file storage, server functions</td><td>USA (AWS us-east-1)</td></tr>
+    <tr><td>OpenAI</td><td>AI helpers, only if you turn them on</td><td>USA</td></tr>
+    <tr><td>Google (YouTube Data API)</td><td>Finding "how to make it" videos; only the meal name is sent</td><td>USA</td></tr>
+    <tr><td>Google (Firebase Cloud Messaging) and Apple (APNs)</td><td>Delivering push notifications</td><td>USA</td></tr>
+    <tr><td>Apple and Google</td><td>Signing in</td><td>USA</td></tr>
+    <tr><td>Vercel</td><td>Hosting the web app and this page</td><td>Global edge network</td></tr>
+  </table></div>
+  <p>We never sell or share your data for advertising.</p>
+
+  <h2>How long we keep it</h2>
+  <ul>
+    <li>Your account and lists: until you delete them or your account.</li>
+    <li>Meal history (used for "make it again" and ratings): one year.</li>
+    <li>AI request counts: two days.</li>
+    <li>Expired invite links: removed 30 days after they expire.</li>
+    <li>"Someone's shopping" notices: one day.</li>
+    <li>Backups made by our database provider may hold deleted data for a short time until they roll over.</li>
+  </ul>
+
+  <h2>Your rights</h2>
+  <p>You can do most of this yourself in the app under <strong>Account</strong>:</p>
+  <ul>
+    <li><strong>Access and portability:</strong> "Download my data" gives you everything as a JSON file.</li>
+    <li><strong>Correction:</strong> edit your name, lists and meals any time.</li>
+    <li><strong>Deletion:</strong> "Delete account" erases your account right away. Lists only you use are deleted.
+      Lists you share stay for the other members, and the next person on each one takes it over.
+      Things you added to a shared list remain there for the others, without your name.</li>
+    <li><strong>Withdraw consent:</strong> turn AI helpers off at any time. This doesn't affect anything already processed.</li>
+    <li><strong>Objection and restriction:</strong> email us.</li>
+  </ul>
+  <p>If you're in the EU, UK or another place with similar laws, you can also complain to your data protection authority.
+    We'd appreciate the chance to fix it first.</p>
+
+  <h2>Security</h2>
+  <p>Data is encrypted in transit and at rest. Every table is protected by row-level security, so only members of a
+    list can read it. AI requests go through our server, never straight from your device, and are rate-limited.</p>
+
+  <h2>Children</h2>
+  <p>Lamar's Groceries isn't meant for children under 13 (16 in some EU countries). We don't knowingly collect their data.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes in a way that matters, we'll update the date above and let you know in the app.</p>
+</main>
+</body>
+</html>

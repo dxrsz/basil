@@ -54,10 +54,12 @@ class ListsScreen extends ConsumerWidget {
           PopupMenuButton<String>(
             icon: const Icon(Icons.account_circle_outlined),
             onSelected: (v) {
+              if (v == 'account') context.go('/account');
               if (v == 'notifications') context.go('/settings/notifications');
               if (v == 'signout') signOutAndUnregister(ref);
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'account', child: Text('Account')),
               PopupMenuItem(value: 'notifications', child: Text('Notifications')),
               PopupMenuItem(value: 'signout', child: Text('Sign out')),
             ],

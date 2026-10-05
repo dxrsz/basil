@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart' show sha256;
 
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -55,6 +55,13 @@ class Repository {
   /// identity token goes to Supabase. The nonce ties the token to this
   /// request: Apple gets its SHA-256, Supabase the raw value to check it.
   Future<void> _signInWithAppleNatively() async {
+    final apple = await nativeAppleCredential();
+    await _db.auth.signInWithIdToken(provider: OAuthProvider.apple, idToken: apple.idToken, nonce: apple.rawNonce);
+    await afterNativeApple(apple.credential);
+  }
+
+  /// Shows Apple's native sheet; returns what Supabase needs (sign in or link).
+  Future<({AuthorizationCredentialAppleID credential, String idToken, String rawNonce})> nativeAppleCredential() async {
     final rawNonce = _db.auth.generateRawNonce();
     final credential = await SignInWithApple.getAppleIDCredential(
       scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
@@ -62,15 +69,30 @@ class Repository {
     );
     final idToken = credential.identityToken;
     if (idToken == null) throw const AuthException('Apple didn\'t return a sign-in token. Try again.');
-    await _db.auth.signInWithIdToken(provider: OAuthProvider.apple, idToken: idToken, nonce: rawNonce);
+    return (credential: credential, idToken: idToken, rawNonce: rawNonce);
+  }
 
-    // Apple only shares the name the first time someone signs in, and it
-    // isn't in the token: save it to the profile while we have it.
+  /// After a native Apple sign-in or link: save the name (Apple only shares it
+  /// the first time, and it isn't in the token) and hand the authorization
+  /// code to the server, which keeps a refresh token so deleting the account
+  /// can revoke Sign in with Apple, as Apple requires.
+  Future<void> afterNativeApple(AuthorizationCredentialAppleID credential) async {
     final name = [credential.givenName, credential.familyName].whereType<String>().join(' ').trim();
     final uid = _db.auth.currentUser?.id;
     if (name.isNotEmpty && uid != null) {
       await _db.from('profiles').update({'display_name': name}).eq('id', uid);
     }
+    unawaited(
+      _db.functions
+          .invoke(
+            'apple-token',
+            body: {'authorization_code': credential.authorizationCode, 'client_id': 'com.lamarsgroceries.app'},
+          )
+          .catchError((Object e) {
+            debugPrint('apple-token: $e');
+            return FunctionResponse(status: 0);
+          }),
+    );
   }
 
   Future<void> signOut() async {
@@ -510,11 +532,22 @@ class AddItemResult {
 }
 
 /// Turns Supabase exceptions into something worth showing a person.
+/// The server's answer to an AI request from someone who hasn't turned on
+/// Lamar's AI helpers (see consumeQuota in supabase/functions/_shared).
+const aiConsentRequired = 'ai_consent_required';
+
+/// True when [e] is the server saying AI helpers are off for this user.
+bool isAiConsentRequired(Object e) =>
+    e is FunctionException && e.details is Map && (e.details as Map)['error'] == aiConsentRequired;
+
 String friendlyError(Object e) {
   if (e is OfflineException) return e.message;
   if (e is PostgrestException) return e.message;
   if (e is FunctionException) {
     final details = e.details;
+    if (details is Map && details['error'] == aiConsentRequired) {
+      return 'Lamar\'s AI helpers are off. Turn them on in Account to use this.';
+    }
     if (details is Map && details['error'] is String) return details['error'] as String;
     return 'Something went wrong (${e.status})';
   }

@@ -11,6 +11,7 @@ import '../../widgets/recipe_image.dart';
 import '../pantry/add_meal_flow.dart';
 import '../pantry/pantry_data.dart';
 import '../pantry/pantry_logic.dart';
+import '../planner/meal_memory.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   const RecipeDetailScreen({super.key, required this.listId, required this.recipeId});
@@ -179,6 +180,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         ],
                       ),
                     ),
+                MealMemoryRow(recipe: recipe),
                 const SizedBox(height: 24),
                 Text('Ingredients', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),

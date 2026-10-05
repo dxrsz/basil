@@ -47,6 +47,8 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
         case 'edit':
           final result = await showListFormSheet(context, initialName: list.name, initialEmoji: list.emoji);
           if (result != null) await repo.updateList(list.id, name: result.name, emoji: result.emoji);
+        case 'kitchen':
+          await context.push('/lists/${list.id}/plan/profile');
         case 'leave':
           if (await _confirm('Leave "${list.name}"?', 'You can rejoin later with an invite code.', 'Leave')) {
             await repo.leaveList(list.id);
@@ -135,6 +137,7 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'pantry', child: Text('Pantry staples')),
               const PopupMenuItem(value: 'edit', child: Text('Rename')),
+              const PopupMenuItem(value: 'kitchen', child: Text('Kitchen profile')),
               if (!isOwner) const PopupMenuItem(value: 'leave', child: Text('Leave list')),
               if (isOwner) const PopupMenuItem(value: 'delete', child: Text('Delete list')),
             ],

@@ -8,6 +8,7 @@ import '../../models/models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/recipe_image.dart';
 import '../import/import_flow.dart';
+import '../planner/meal_memory.dart';
 
 class RecipesTab extends ConsumerWidget {
   const RecipesTab({super.key, required this.listId});
@@ -38,6 +39,12 @@ class RecipesTab extends ConsumerWidget {
               label: const Text('Add a meal'),
             ),
             const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/lists/$listId/plan'),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Plan my week with Lamar'),
+            ),
+            const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () => importToList(context, ref, listId: listId),
               icon: const Icon(Icons.add_a_photo_outlined),
@@ -46,16 +53,29 @@ class RecipesTab extends ConsumerWidget {
           ],
         ),
       ),
-      AsyncData(:final value) => GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 240,
-          mainAxisSpacing: 14,
-          crossAxisSpacing: 14,
-          childAspectRatio: 0.78,
-        ),
-        itemCount: value.length,
-        itemBuilder: (_, i) => _RecipeCard(recipe: value[i], onList: onList.contains(value[i].id), listId: listId),
+      AsyncData(:final value) => CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: MealsTabHeader(listId: listId, recipes: value, onList: onList),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            sliver: SliverGrid.builder(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 240,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 0.78,
+              ),
+              itemCount: value.length,
+              itemBuilder: (_, i) =>
+                  _RecipeCard(recipe: value[i], onList: onList.contains(value[i].id), listId: listId),
+            ),
+          ),
+        ],
       ),
       AsyncError(:final error) => EmptyState(emoji: '😕', title: 'Couldn\'t load meals', message: friendlyError(error)),
       _ => const Center(child: CircularProgressIndicator()),

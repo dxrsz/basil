@@ -8,6 +8,9 @@ import 'data/providers.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/list/list_screen.dart';
 import 'features/lists/lists_screen.dart';
+import 'features/planner/kitchen_profile_screen.dart';
+import 'features/planner/planner_screen.dart';
+import 'features/planner/tonight_screen.dart';
 import 'features/recipe/recipe_detail_screen.dart';
 import 'features/recipe/recipe_editor_screen.dart';
 import 'features/store/store_mode_screen.dart';
@@ -60,6 +63,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                     ),
                   ),
                 ],
+              ),
+              GoRoute(
+                path: 'plan',
+                builder: (_, s) => PlannerScreen(listId: s.pathParameters['listId']!),
+                routes: [
+                  GoRoute(
+                    path: 'profile',
+                    builder: (_, s) => KitchenProfileScreen(listId: s.pathParameters['listId']!),
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'tonight',
+                builder: (_, s) => TonightScreen(listId: s.pathParameters['listId']!),
               ),
             ],
           ),

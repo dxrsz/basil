@@ -71,7 +71,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 class _StreamListenable extends ChangeNotifier {
   _StreamListenable(Stream<dynamic> stream) {
-    _sub = stream.listen((_) => notifyListeners());
+    // Auth emits errors when a token refresh fails offline (e.g. a DNS blip at
+    // the store); supabase_flutter retries on its own, so don't let them
+    // surface as unhandled exceptions.
+    _sub = stream.listen((_) => notifyListeners(), onError: (Object _) {});
   }
 
   late final StreamSubscription<dynamic> _sub;

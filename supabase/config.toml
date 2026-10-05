@@ -434,3 +434,8 @@ verify_jwt = true
 
 [functions.plan-meals]
 verify_jwt = true
+
+[functions.notify]
+# Called by the database (pg_net), not by users: it checks a shared secret
+# (private.notify_config) instead of a JWT. See the function header.
+verify_jwt = false

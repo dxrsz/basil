@@ -24,8 +24,9 @@ from snap import palette_labels, render, snap  # noqa: E402
 HERE = os.path.dirname(__file__)
 SIZE = 1024
 # Lamar's size: whole-number pixel scales (his grid is ~54x65 cells).
-FG_SCALE = int(os.environ.get('FG_SCALE', 11))      # Android foreground (visible circle ~683 px)
-FLAT_SCALE = int(os.environ.get('FLAT_SCALE', 14))  # flattened iOS/web icon
+FG_SCALE = int(os.environ.get('FG_SCALE', 14))      # Android foreground (visible circle ~683 px)
+FLAT_SCALE = int(os.environ.get('FLAT_SCALE', 15))  # flattened iOS/web icon
+FG_DY = int(os.environ.get('FG_DY', 112))  # nudge the Android foreground down (px)
 
 
 def despeckle(g: np.ndarray) -> np.ndarray:
@@ -75,7 +76,7 @@ adaptive_bg = adaptive_bg.crop((c, c, c + SIZE, c + SIZE))
 adaptive_bg.convert('RGB').save('assets/icon/icon_background.png')
 # Adaptive foreground: launchers show the centre 72/108 of the layer, usually
 # masked to a circle (~683 px here); Lamar fills most of it.
-centred(fg, FG_SCALE, dy=36).save('assets/icon/icon_foreground.png')  # ears inside the circle; the bag clips
+centred(fg, FG_SCALE, dy=FG_DY).save('assets/icon/icon_foreground.png')  # ears just inside the circle; the rest may clip
 # Flattened icon: Lamar large on the glow.
 flat = background.copy()
 flat.alpha_composite(centred(fg, FLAT_SCALE))

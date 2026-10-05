@@ -126,12 +126,7 @@ SPA rewrite and serves it as JSON):
   (Play Console → App integrity, or `keytool -list -v -keystore <release.jks>`).
   Check with `adb shell pm verify-app-links --re-verify com.lamarsgroceries.app`
   then `adb shell pm get-app-links com.lamarsgroceries.app`.
-- **iOS** (`apple-app-site-association`): replace `TEAMID_PLACEHOLDER` (twice) with
-  the Apple Team ID once the developer account is active. The Runner target's
-  `Runner/Runner.entitlements` has `applinks:lamarsgroceries.app` and
-  `aps-environment`; device builds need a provisioning profile with Associated
-  Domains and Push Notifications (automatic signing adds them once a team is set).
-  Simulator builds don't need either.
+- **iOS** (`apple-app-site-association`): Team ID `R28RDFMBN9` is filled in.
 
 ### Presence
 

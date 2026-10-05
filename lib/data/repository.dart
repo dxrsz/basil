@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:crypto/crypto.dart' show sha256;
+
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:http/http.dart' as http;
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -37,12 +40,37 @@ class Repository {
   // ------------------------------------------------------------------ auth
 
   Future<void> signIn(OAuthProvider provider) async {
+    if (provider == OAuthProvider.apple && !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      return _signInWithAppleNatively();
+    }
     await _db.auth.signInWithOAuth(
       provider,
       // On web, come back to this page (same tab); on mobile, the app's URL scheme.
       redirectTo: kIsWeb ? Uri.base.origin : Config.authRedirect,
       authScreenLaunchMode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
     );
+  }
+
+  /// Apple's own sign-in sheet on iPhone (what App Review expects), then the
+  /// identity token goes to Supabase. The nonce ties the token to this
+  /// request: Apple gets its SHA-256, Supabase the raw value to check it.
+  Future<void> _signInWithAppleNatively() async {
+    final rawNonce = _db.auth.generateRawNonce();
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+      nonce: sha256.convert(utf8.encode(rawNonce)).toString(),
+    );
+    final idToken = credential.identityToken;
+    if (idToken == null) throw const AuthException('Apple didn\'t return a sign-in token. Try again.');
+    await _db.auth.signInWithIdToken(provider: OAuthProvider.apple, idToken: idToken, nonce: rawNonce);
+
+    // Apple only shares the name the first time someone signs in, and it
+    // isn't in the token: save it to the profile while we have it.
+    final name = [credential.givenName, credential.familyName].whereType<String>().join(' ').trim();
+    final uid = _db.auth.currentUser?.id;
+    if (name.isNotEmpty && uid != null) {
+      await _db.from('profiles').update({'display_name': name}).eq('id', uid);
+    }
   }
 
   Future<void> signOut() async {

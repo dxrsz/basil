@@ -12,5 +12,10 @@
 	<array>
 		<string>applinks:lamarsgroceries.app</string>
 	</array>
+	<!-- Native Sign in with Apple (App ID capability: Sign In with Apple, primary). -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

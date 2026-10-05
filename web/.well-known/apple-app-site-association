@@ -3,8 +3,8 @@
     "apps": [],
     "details": [
       {
-        "appID": "TEAMID_PLACEHOLDER.com.lamarsgroceries.app",
-        "appIDs": ["TEAMID_PLACEHOLDER.com.lamarsgroceries.app"],
+        "appID": "R28RDFMBN9.com.lamarsgroceries.app",
+        "appIDs": ["R28RDFMBN9.com.lamarsgroceries.app"],
         "paths": ["/join/*"],
         "components": [{ "/": "/join/*", "comment": "Invite links" }]
       }

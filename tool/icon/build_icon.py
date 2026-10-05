@@ -1,7 +1,7 @@
 """Builds the app icon from two AI-made pixel-art layers, de-mixeled.
 
 Inputs (tool/icon/): background.webp (green glow, leaves, sparkles) and
-foreground.webp (Lamar with his groceries and checklist, transparent).
+foreground.webp (Lamar in a grocery bag, transparent).
 Each is snapped onto a uniform pixel grid (snap.py) and cleaned of stray
 specks, then written as:
   assets/icon/icon_background.png   Android adaptive background (full bleed)
@@ -23,10 +23,10 @@ from snap import palette_labels, render, snap  # noqa: E402
 
 HERE = os.path.dirname(__file__)
 SIZE = 1024
-# Lamar's size: whole-number pixel scales (his grid is ~54x65 cells).
-FG_SCALE = int(os.environ.get('FG_SCALE', 14))      # Android foreground (visible circle ~683 px)
-FLAT_SCALE = int(os.environ.get('FLAT_SCALE', 15))  # flattened iOS/web icon
-FG_DY = int(os.environ.get('FG_DY', 112))  # nudge the Android foreground down (px)
+# Lamar's size: whole-number pixel scales.
+FG_SCALE = int(os.environ.get('FG_SCALE', 11))      # Android foreground (visible circle ~683 px)
+FLAT_SCALE = int(os.environ.get('FLAT_SCALE', 14))  # flattened iOS/web icon
+FG_DY = int(os.environ.get('FG_DY', 0))  # nudge the Android foreground down (px)
 
 
 def despeckle(g: np.ndarray) -> np.ndarray:
@@ -52,9 +52,9 @@ bg = despeckle(trim(bg))[:64, :64]
 assert bg.shape == (64, 64) and (bg >= 0).all(), bg.shape
 background = render(bg, pal_bg, SIZE // 64)                       # 64 * 16 = 1024
 
-# Lamar: no single clean grid in the source; ~16.6 px cells keep the checklist legible.
+# Lamar: no single clean grid in the source; 14 px cells keep his smile and eyes.
 labf, pal_fg = palette_labels(Image.open(os.path.join(HERE, 'foreground.webp')), 28)
-fg, _, _ = snap(labf, 28, 16.6)
+fg, _, _ = snap(labf, 28, 14.0)
 fg = trim(despeckle(fg))
 
 
@@ -76,7 +76,7 @@ adaptive_bg = adaptive_bg.crop((c, c, c + SIZE, c + SIZE))
 adaptive_bg.convert('RGB').save('assets/icon/icon_background.png')
 # Adaptive foreground: launchers show the centre 72/108 of the layer, usually
 # masked to a circle (~683 px here); Lamar fills most of it.
-centred(fg, FG_SCALE, dy=FG_DY).save('assets/icon/icon_foreground.png')  # ears just inside the circle; the rest may clip
+centred(fg, FG_SCALE, dy=FG_DY).save('assets/icon/icon_foreground.png')  # ears just inside the circle; the bag's bottom may clip
 # Flattened icon: Lamar large on the glow.
 flat = background.copy()
 flat.alpha_composite(centred(fg, FLAT_SCALE))

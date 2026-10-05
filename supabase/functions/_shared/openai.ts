@@ -62,3 +62,40 @@ export async function generateImage(prompt: string): Promise<Uint8Array> {
   if (!b64) throw new Error("OpenAI returned no image");
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 }
+
+// Vision: any model that accepts image input (gpt-5-mini does).
+export const VISION_MODEL = Deno.env.get("OPENAI_VISION_MODEL") ?? "gpt-5-mini";
+
+/**
+ * Like structured(), but the user message also carries one image (a data: URL
+ * or https URL) and goes to VISION_MODEL.
+ */
+export async function structuredWithImage<T>(
+  system: string,
+  user: string,
+  imageUrl: string,
+  schemaName: string,
+  schema: Record<string, unknown>,
+): Promise<T> {
+  const data = await openai("chat/completions", {
+    model: VISION_MODEL,
+    messages: [
+      { role: "system", content: system },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: user },
+          { type: "image_url", image_url: { url: imageUrl, detail: "high" } },
+        ],
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: schemaName, strict: true, schema },
+    },
+    ...(/^(gpt-5|o\d)/.test(VISION_MODEL) ? { reasoning_effort: REASONING_EFFORT } : {}),
+  });
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("OpenAI returned no content");
+  return JSON.parse(content) as T;
+}

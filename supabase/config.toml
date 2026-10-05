@@ -425,3 +425,6 @@ verify_jwt = true
 
 [functions.generate-recipe-image]
 verify_jwt = true
+
+[functions.import-items]
+verify_jwt = true

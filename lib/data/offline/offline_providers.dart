@@ -64,7 +64,12 @@ final rowCacheProvider = Provider<RowCache?>((ref) {
 /// Platform "is there a network at all" signal (airplane mode, no Wi-Fi or
 /// cellular). Bad signal with a network still present is caught by requests
 /// failing.
-final networkAvailableProvider = Provider<Stream<bool>>((ref) => _networkAvailable());
+///
+/// A factory, not a stream: each listener needs its own single-subscription
+/// stream (with the current state first). Sharing one stream crashed with
+/// "Stream has already been listened to" when the outbox was rebuilt for a
+/// different signed-in user.
+final networkAvailableProvider = Provider<Stream<bool> Function()>((ref) => _networkAvailable);
 
 Stream<bool> _networkAvailable() async* {
   final connectivity = Connectivity();
@@ -94,7 +99,7 @@ final outboxProvider = Provider<Outbox?>((ref) {
     probe: ref.watch(connectionProbeProvider),
   );
   final network = ref
-      .watch(networkAvailableProvider)
+      .watch(networkAvailableProvider)()
       .listen(outbox.setNetworkAvailable, onError: (Object e) => debugPrint('connectivity: $e'));
   final lifecycle = AppLifecycleListener(onResume: outbox.checkConnection);
   unawaited(outbox.checkConnection());

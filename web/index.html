@@ -33,6 +33,19 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body style="margin:0;background:#FBFAF6">
+  <!-- Lamar dances here while Flutter downloads, then Flutter's own splash
+       (same GIF, same spot) takes over on its first frame. -->
+  <div id="lamar-loading" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Roboto,sans-serif">
+    <img src="assets/assets/images/dancing_cat.gif" width="156" height="172" alt="Lamar the tuxedo cat, dancing" style="image-rendering:pixelated">
+    <div style="margin-top:20px;font-size:30px;font-weight:800;letter-spacing:-0.5px;color:#1A1A1A">Lamar&#39;s Groceries</div>
+    <div style="margin-top:4px;font-size:14px;color:#6B6763">Lamar is checking the pantry…</div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('lamar-loading');
+      if (el) el.remove();
+    });
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

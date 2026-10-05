@@ -63,6 +63,24 @@ supabase start
 supabase functions serve --env-file supabase/.env
 ```
 
+## Web (Vercel)
+
+The web build deploys to Vercel straight from GitHub; `vercel.json` points
+Vercel at `tool/vercel/install.sh` (fetches a pinned Flutter SDK, since
+Vercel's image has none) and `tool/vercel/build.sh` (`flutter build web`).
+
+1. Vercel → **Add New → Project** → import this repo. Leave Framework as
+   "Other"; build settings come from `vercel.json`.
+2. **Settings → Environment Variables**: `SUPABASE_URL` and
+   `SUPABASE_PUBLISHABLE_KEY` (both public; never the service-role key).
+3. **Settings → Domains**: add `lamarsgroceries.app`.
+4. Supabase → Auth → URL Configuration: Site URL `https://lamarsgroceries.app`,
+   and add it (plus `https://*-<team>.vercel.app/**` for previews) to Redirect URLs.
+
+Pushes to `main` deploy to production; pull requests get preview URLs.
+Builds take ~2 minutes (verified in an Amazon Linux 2023 container, the
+image Vercel builds on).
+
 ## Rate limits
 
 The OpenAI-backed functions are limited per user (`public.consume_ai_quota`):

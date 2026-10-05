@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config.dart';
@@ -8,6 +9,9 @@ import 'router.dart';
 import 'theme.dart';
 
 void main() {
+  // On web, use real paths (/lists/abc) instead of /#/lists/abc so links such
+  // as invites can be shared. No-op on iOS/Android.
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const _Bootstrap());
 }

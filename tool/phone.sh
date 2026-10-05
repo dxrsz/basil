@@ -41,6 +41,11 @@ wifi_devices() {
 connect_phone() {
   local tries="${1:-5}" d addr
   for ((i = 1; i <= tries; i++)); do
+    # Entries stuck "offline"/"unauthorized" block reconnecting to the same
+    # address ("already connected"), so clear them first.
+    for d in $("$ADB" devices | awk 'NR > 1 && $2 != "device" && ($1 ~ /_adb-tls-connect/ || $1 ~ /:[0-9]+$/) { print $1 }'); do
+      "$ADB" disconnect "$d" >/dev/null 2>&1 || true
+    done
     for d in $(wifi_devices); do
       if responsive "$d"; then echo "$d"; return 0; fi
       "$ADB" disconnect "$d" >/dev/null 2>&1 || true   # stale: drop it and rediscover
@@ -55,7 +60,8 @@ connect_phone() {
 app_running() { [[ -n "$(with_timeout 6 "$ADB" -s "$1" shell pidof "$APP_ID" 2>/dev/null | tr -d '\r')" ]]; }
 
 no_phone() {
-  echo "Can't reach your phone. Check that it's unlocked, on the same Wi-Fi as this Mac," >&2
+  echo "Can't reach your phone. Unlock it (Android refuses new debug connections while it's" >&2
+  echo "asleep), and check it's on the same Wi-Fi as this Mac," >&2
   echo "and that Wireless debugging is still on (Settings → System → Developer options)." >&2
   echo "Android turns it off after a while and whenever you change Wi-Fi networks." >&2
   exit 1

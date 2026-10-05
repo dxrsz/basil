@@ -37,6 +37,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Lamar reads photos of your shopping lists, recipe cards and fridge so he can add things for you.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Lamar reads the photos you pick, like a shopping list or a recipe, so he can add things for you.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

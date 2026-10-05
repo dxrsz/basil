@@ -10,6 +10,7 @@ import '../../data/repository.dart';
 import '../../models/models.dart';
 import '../../util/categories.dart';
 import '../../widgets/empty_state.dart';
+import '../import/import_flow.dart';
 
 /// Create or edit a meal: a name plus the ingredients you associate with it.
 ///
@@ -217,6 +218,20 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
     });
   }
 
+  // --------------------------------------------------------------- import
+
+  Future<void> _import() async {
+    final decision = await runImport(context, ref, target: ImportTarget.editor);
+    if (decision == null || !mounted) return;
+    if (_meal.isEmpty && decision.mealName.isNotEmpty) _name.text = decision.mealName;
+    setState(() {
+      for (final i in decision.items) {
+        if (!_has(i.name)) _ingredients.add(Ingredient(name: i.name, quantity: i.quantity));
+      }
+    });
+    _scheduleReview();
+  }
+
   // ---------------------------------------------------------- ingredients
 
   void _addIngredient() {
@@ -299,6 +314,11 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
       appBar: AppBar(
         title: Text(_isNew ? 'New meal' : 'Edit meal'),
         actions: [
+          IconButton(
+            tooltip: 'Import from photo or link',
+            onPressed: _import,
+            icon: const Icon(Icons.add_a_photo_outlined),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilledButton(
@@ -347,9 +367,17 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           ),
           const SizedBox(height: 8),
 
-          if (_ingredients.isEmpty)
-            _AutofillCard(meal: _meal, busy: _autofilling, onPressed: _meal.isEmpty || _autofilling ? null : _autofill)
-          else
+          if (_ingredients.isEmpty) ...[
+            _AutofillCard(meal: _meal, busy: _autofilling, onPressed: _meal.isEmpty || _autofilling ? null : _autofill),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _import,
+                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                label: const Text('Import from photo or link'),
+              ),
+            ),
+          ] else
             Wrap(
               spacing: 8,
               runSpacing: 8,

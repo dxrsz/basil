@@ -7,6 +7,7 @@ import '../../data/repository.dart';
 import '../../models/models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/recipe_image.dart';
+import '../import/import_flow.dart';
 
 class RecipesTab extends ConsumerWidget {
   const RecipesTab({super.key, required this.listId});
@@ -29,10 +30,20 @@ class RecipesTab extends ConsumerWidget {
         message:
             'Add a meal like "Taco bowls" with what goes in it. '
             'Lamar will flag anything you forgot and snap a photo of it.',
-        action: FilledButton.icon(
-          onPressed: () => context.go('/lists/$listId/recipes/new'),
-          icon: const Icon(Icons.add),
-          label: const Text('Add a meal'),
+        action: Column(
+          children: [
+            FilledButton.icon(
+              onPressed: () => context.go('/lists/$listId/recipes/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('Add a meal'),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => importToList(context, ref, listId: listId),
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: const Text('Import from photo or link'),
+            ),
+          ],
         ),
       ),
       AsyncData(:final value) => GridView.builder(

@@ -6,6 +6,7 @@ import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../widgets/avatars.dart';
 import '../../widgets/empty_state.dart';
+import '../import/import_flow.dart';
 import '../lists/list_form_sheet.dart';
 import 'recipes_tab.dart';
 import 'share_sheet.dart';
@@ -131,10 +132,23 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
         ),
       ),
       floatingActionButton: _tabs.index == 1
-          ? FloatingActionButton.extended(
-              onPressed: () => context.go('/lists/${list.id}/recipes/new'),
-              icon: const Icon(Icons.add),
-              label: const Text('New meal'),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'import-meal',
+                  tooltip: 'Import from photo or link',
+                  onPressed: () => importToList(context, ref, listId: list.id),
+                  child: const Icon(Icons.add_a_photo_outlined),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton.extended(
+                  onPressed: () => context.go('/lists/${list.id}/recipes/new'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('New meal'),
+                ),
+              ],
             )
           : null,
       body: TabBarView(

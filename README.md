@@ -9,6 +9,7 @@ Shared grocery lists that know what's for dinner. Flutter (iOS + Android) on Sup
 - **Meals.** A meal is just a name ("Taco bowls") and the items you associate with it. One tap puts its ingredients on the list, skipping anything already there, and items are tagged with the meal they came from.
 - **"Forgetting rice?"** While you build a meal, the model reviews it. Likely-missing core ingredients show up as warning cards you can accept or dismiss, and nice-to-haves show up as chips. Dismissed ideas don't come back.
 - **Auto-fill.** Name a meal and tap *Fill in ingredients* to get a starter list.
+- **Snap or paste to add.** Photograph a handwritten list, a recipe card or the inside of the fridge, or paste a recipe link or a list. Lamar works out which it is and pulls out the items (or the meal and its ingredients). You review and edit everything before it's added. Recipe links are read from the page's schema.org Recipe data when it has some.
 - **Meal photos.** After saving, an image of the finished dish is generated from the actual ingredients. It regenerates only when the ingredients meaningfully change, and it reaches every device via realtime.
 
 ## Layout
@@ -20,7 +21,8 @@ lib/
   models/, util/ (aisle categorisation + quantity parsing), widgets/
 supabase/
   migrations/    schema, RLS, RPCs, realtime publication, storage bucket
-  functions/     suggest-ingredients, generate-recipe-image (OpenAI; key never ships in the app)
+  functions/     suggest-ingredients, generate-recipe-image, import-items (OpenAI; key never ships in the app)
+  tests/         Node tests for edge-function helpers: `node --test supabase/tests/` (Node 23+)
 ```
 
 ## Setup
@@ -34,9 +36,10 @@ supabase db push
 supabase secrets set OPENAI_API_KEY=sk-...
 supabase functions deploy suggest-ingredients
 supabase functions deploy generate-recipe-image
+supabase functions deploy import-items
 ```
 
-Optional secrets: `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `OPENAI_IMAGE_MODEL` (default `gpt-image-1`) and `OPENAI_REASONING_EFFORT` (default `minimal`).
+Optional secrets: `OPENAI_TEXT_MODEL` (default `gpt-5-mini`), `OPENAI_VISION_MODEL` (default `gpt-5-mini`; must accept image input), `OPENAI_IMAGE_MODEL` (default `gpt-image-1`) and `OPENAI_REASONING_EFFORT` (default `minimal`).
 
 ### 2. OAuth
 
@@ -95,5 +98,6 @@ OpenAI project as a final backstop.
 ## Notes
 
 - Never put the service-role key in the app or `env.json`. Edge functions receive it automatically from Supabase.
+- `import-items` fetches user-supplied recipe links server-side through an SSRF guard (`import-items/safe_fetch.ts`): http/https on default ports only, every resolved address and every redirect hop must be public, 8 s timeout, 2 MB cap, HTML/JSON only. Photos are sent inline (base64) and never stored. `tool/import_items_e2e.mjs` exercises it against the live project with a throwaway user.
 - Generated images live in a public-read bucket under random UUID paths. Only the edge function writes to it.
 - `util/categories.dart` mirrors `public.categorize_item` in SQL; keep them in sync.

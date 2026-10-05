@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/import_repository.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../models/models.dart';
 import '../../util/categories.dart';
 import '../../widgets/avatars.dart';
 import '../../widgets/empty_state.dart';
+import '../import/import_flow.dart';
 
 class ShoppingTab extends ConsumerStatefulWidget {
   const ShoppingTab({super.key, required this.listId});
@@ -42,6 +44,11 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
   Future<void> _add() async {
     final text = _input.text.trim();
     if (text.isEmpty) return;
+    // A pasted recipe link: let Lamar read it instead of adding the URL as an item.
+    if (linkIn(text) != null) {
+      _input.clear();
+      return importToList(context, ref, listId: widget.listId, initialText: text);
+    }
     _input.clear();
     _focus.requestFocus();
     try {
@@ -155,7 +162,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
           ? const EmptyState(
               emoji: '📝',
               title: 'Nothing on the list',
-              message: 'Add items below, or add a meal from the Meals tab to pull in its ingredients.',
+              message: 'Add items below, snap a photo of a list, or add a meal from the Meals tab to pull in its ingredients.',
             )
           : CustomScrollView(
               slivers: [
@@ -231,7 +238,12 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
     return Column(
       children: [
         Expanded(child: body),
-        _AddBar(controller: _input, focusNode: _focus, onSubmit: _add),
+        _AddBar(
+          controller: _input,
+          focusNode: _focus,
+          onSubmit: _add,
+          onImport: () => importToList(context, ref, listId: widget.listId),
+        ),
       ],
     );
   }
@@ -351,11 +363,12 @@ class _ItemTile extends StatelessWidget {
 }
 
 class _AddBar extends StatelessWidget {
-  const _AddBar({required this.controller, required this.focusNode, required this.onSubmit});
+  const _AddBar({required this.controller, required this.focusNode, required this.onSubmit, required this.onImport});
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final VoidCallback onSubmit;
+  final VoidCallback onImport;
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +394,11 @@ class _AddBar extends StatelessWidget {
                   onSubmitted: (_) => onSubmit(),
                 ),
               ),
-              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Snap or paste a list',
+                onPressed: onImport,
+                icon: const Icon(Icons.add_a_photo_outlined),
+              ),
               IconButton.filled(onPressed: onSubmit, icon: const Icon(Icons.arrow_upward)),
             ],
           ),

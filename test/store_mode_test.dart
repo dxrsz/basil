@@ -304,7 +304,9 @@ void main() {
     await finish(tester, world, container);
   });
 
-  testWidgets('shopping tab: "I\'m at the store" button, offline markers, and clear works offline', (tester) async {
+  testWidgets('shopping tab: "Switch to shopping view" button, offline markers, and clear works offline', (
+    tester,
+  ) async {
     final world = World([row('Bananas', 'Produce'), row('Milk', 'Dairy & Eggs', checked: true)]);
     final container = ProviderContainer(
       overrides: [
@@ -323,7 +325,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('I\'m at the store'), findsOneWidget);
+    expect(find.text('Switch to shopping view'), findsOneWidget);
     expect(find.byType(PendingSyncIcon), findsNothing);
 
     world.offline = true;
@@ -331,7 +333,7 @@ void main() {
     await tester.tap(find.byType(Checkbox).first); // check Bananas
     await tester.pumpAndSettle();
     expect(find.byType(PendingSyncIcon), findsOneWidget);
-    expect(find.text('I\'m at the store'), findsNothing); // nothing left to get
+    expect(find.text('Switch to shopping view'), findsNothing); // nothing left to get
 
     await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
@@ -343,6 +345,55 @@ void main() {
     world.outbox.setNetworkAvailable(true);
     await tester.pumpAndSettle();
     expect(world.rows, isEmpty);
+    await finish(tester, world, container);
+  });
+
+  testWidgets('shopping tab: tap checks off, swipe either way deletes, long-press edits', (tester) async {
+    final world = World([
+      row('Bananas', 'Produce'),
+      row('Bread', 'Bakery'),
+      row('Milk', 'Dairy & Eggs'),
+      row('Eggs', 'Dairy & Eggs'),
+    ]);
+    final container = ProviderContainer(
+      overrides: [
+        ...world.overrides.cast(),
+        membersProvider.overrideWith((ref, id) => Stream.value(const <Member>[])),
+        recipesProvider.overrideWith((ref, id) => const AsyncData(<Recipe>[])),
+      ],
+    );
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: buildTheme(Brightness.light),
+          home: const Scaffold(body: ShoppingTab(listId: listId)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    bool? checked(String name) => world.rows.values.where((r) => r['name'] == name).firstOrNull?['checked'] as bool?;
+
+    await tester.tap(find.text('Bananas')); // the row, not just the checkbox
+    await tester.pumpAndSettle();
+    expect(checked('Bananas'), isTrue);
+
+    await tester.drag(find.text('Bread'), const Offset(600, 0)); // swipe right
+    await tester.pumpAndSettle();
+    expect(find.text('Bread'), findsNothing);
+    expect(checked('Bread'), isNull);
+
+    await tester.drag(find.text('Milk'), const Offset(-600, 0)); // swipe left
+    await tester.pumpAndSettle();
+    expect(find.text('Milk'), findsNothing);
+    expect(checked('Milk'), isNull);
+
+    await tester.longPress(find.text('Eggs'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit item'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(checked('Eggs'), isFalse);
     await finish(tester, world, container);
   });
 

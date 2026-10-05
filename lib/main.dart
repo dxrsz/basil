@@ -74,7 +74,7 @@ class LamarsApp extends ConsumerWidget {
   }
 }
 
-/// This is a phone app; on wide screens (web, tablets) keep it phone-shaped
+/// This is a phone app; on large screens (tablets, desktop web) keep it phone-shaped
 /// and centred instead of stretching lists across the window.
 class _PhoneWidth extends StatelessWidget {
   const _PhoneWidth({required this.child});
@@ -85,7 +85,9 @@ class _PhoneWidth extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    if (mq.size.width <= maxWidth) return child;
+    // Phones use every pixel, landscape included; only tablets and desktop
+    // browsers (short side 600+) get the centred phone-width column.
+    if (mq.size.shortestSide < 600 || mq.size.width <= maxWidth) return child;
     return ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Center(

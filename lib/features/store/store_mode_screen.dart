@@ -184,7 +184,7 @@ class _StoreModeScreenState extends ConsumerState<StoreModeScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: CloseButton(onPressed: _exit),
-        title: Text(list == null ? 'At the store' : '${list.emoji}  ${list.name}', overflow: TextOverflow.ellipsis),
+        title: Text(list == null ? 'Shopping view' : '${list.emoji}  ${list.name}', overflow: TextOverflow.ellipsis),
       ),
       body: Column(
         children: [

@@ -188,6 +188,17 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                       child: Center(child: Text('🎉  Everything\'s in the cart', style: TextStyle(fontSize: 16))),
                     ),
                   ),
+                if (todo.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                      child: Text(
+                        'Tap to check off · swipe to remove · press and hold to edit',
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
+                    ),
+                  ),
                 for (final category in orderedCategories) ...[
                   SliverToBoxAdapter(child: _SectionHeader('${categoryEmoji[category] ?? '🛍️'}  $category')),
                   SliverList.list(
@@ -200,7 +211,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                           pending: unsynced.contains(item.id),
                           onToggle: (v) => _toggle(item, v),
                           onDelete: () => _delete(item),
-                          onTap: () => _edit(item),
+                          onEdit: () => _edit(item),
                         ),
                     ],
                   ),
@@ -242,7 +253,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                             pending: unsynced.contains(item.id),
                             onToggle: (v) => _toggle(item, v),
                             onDelete: () => _delete(item),
-                            onTap: () => _edit(item),
+                            onEdit: () => _edit(item),
                           ),
                       ],
                     ),
@@ -286,7 +297,7 @@ class _ItemTile extends StatelessWidget {
     required this.item,
     required this.onToggle,
     required this.onDelete,
-    required this.onTap,
+    required this.onEdit,
     this.recipeName,
     this.checkedBy,
     this.pending = false,
@@ -300,7 +311,9 @@ class _ItemTile extends StatelessWidget {
   final bool pending;
   final ValueChanged<bool> onToggle;
   final VoidCallback onDelete;
-  final VoidCallback onTap;
+
+  /// Long-press: tapping the row checks it off.
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -308,18 +321,22 @@ class _ItemTile extends StatelessWidget {
     final scheme = theme.colorScheme;
     final muted = scheme.onSurfaceVariant;
 
+    Widget deleteBackground(Alignment side) => Container(
+      alignment: side,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      color: scheme.errorContainer,
+      child: Icon(Icons.delete_outline, color: scheme.onErrorContainer),
+    );
+    // Swipe either way to delete (with Undo); tap to check off; long-press to edit.
     return Dismissible(
       key: ValueKey('dismiss-${item.id}'),
-      direction: DismissDirection.endToStart,
+      direction: DismissDirection.horizontal,
       onDismissed: (_) => onDelete(),
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        color: scheme.errorContainer,
-        child: Icon(Icons.delete_outline, color: scheme.onErrorContainer),
-      ),
+      background: deleteBackground(Alignment.centerLeft),
+      secondaryBackground: deleteBackground(Alignment.centerRight),
       child: InkWell(
-        onTap: onTap,
+        onTap: () => onToggle(!item.checked),
+        onLongPress: onEdit,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           child: Row(
@@ -398,7 +415,7 @@ class _StoreModeButton extends StatelessWidget {
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
         onPressed: () => context.go('/lists/$listId/store'),
         icon: const Icon(Icons.shopping_cart_outlined),
-        label: const Text('I\'m at the store'),
+        label: const Text('Switch to shopping view'),
       ),
     );
   }

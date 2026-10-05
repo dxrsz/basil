@@ -401,6 +401,7 @@ class Repository {
 
   /// Asks Lamar (the `tidy-list` edge function) for proposed clean-ups.
   Future<List<TidyProposal>> proposeTidy(String listId) async {
+    _requireOnline();
     final res = await _db.functions.invoke('tidy-list', body: {'list_id': listId});
     final data = res.data as Map<String, dynamic>;
     return (data['proposals'] as List).cast<Map<String, dynamic>>().map(TidyProposal.fromJson).toList();

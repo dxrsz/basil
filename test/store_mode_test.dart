@@ -345,4 +345,44 @@ void main() {
     expect(world.rows, isEmpty);
     await finish(tester, world, container);
   });
+
+  test('adding offline merges like add_item does, else queues a client-id item', () async {
+    final world = World([row('Chicken thighs', 'Meat', quantity: '2 lb'), row('Milk', 'Dairy & Eggs', checked: true)]);
+    final cache = RowCache(MemoryKeyValueStore(), userId: 'me')
+      ..write('items|list_id|$listId', world.rows.values.toList());
+    final repo = Repository(world.db, outbox: world.outbox, cache: cache);
+    world.offline = true;
+    world.outbox.setNetworkAvailable(false);
+
+    final merged = await repo.addItem(listId, '1 lb chicken thigh');
+    expect(merged.merged, isTrue);
+    expect(merged.quantity, '3 lb');
+
+    // Milk is only in the cart, so a new Milk is added (as the server would).
+    final added = await repo.addItem(listId, 'Milk');
+    expect(added.merged, isFalse);
+    expect(RegExp(r'^[0-9a-f-]{36}$').hasMatch(added.id), isTrue);
+    expect(world.outbox.apply(listId, world.rows.values.toList()).where((r) => r['name'] == 'Milk'), hasLength(2));
+
+    // The client-made id works before sync: removing it cancels the add.
+    await repo.deleteItem(added.id, listId: listId);
+    expect(world.outbox.queued.map((o) => o.kind), [OpKind.update]);
+
+    world.offline = false;
+    world.outbox.setNetworkAvailable(true);
+    await world.outbox.flush();
+    expect(world.rows.values.firstWhere((r) => r['name'] == 'Chicken thighs')['quantity'], '3 lb');
+    expect(world.rows, hasLength(2));
+
+    // Meal/AI features say kindly that they need a connection.
+    world.offline = true;
+    world.outbox.setNetworkAvailable(false);
+    await expectLater(
+      repo.suggestIngredients(meal: 'Tacos', ingredients: const [], dismissed: const []),
+      throwsA(isA<OfflineException>()),
+    );
+    expect(friendlyError(const OfflineException()), contains('needs a connection'));
+    world.outbox.dispose();
+    await world.db.dispose();
+  });
 }

@@ -13,6 +13,8 @@ Shared grocery lists that know what's for dinner. Flutter (iOS + Android) on Sup
 - **"Forgetting rice?"** While you build a meal, the model reviews it. Likely-missing core ingredients show up as warning cards you can accept or dismiss, and nice-to-haves show up as chips. Dismissed ideas don't come back.
 - **Auto-fill.** Name a meal and tap *Fill in ingredients* to get a starter list.
 - **Snap or paste to add.** Photograph a handwritten list, a recipe card or the inside of the fridge, or paste a recipe link or a list. Lamar works out which it is and pulls out the items (or the meal and its ingredients). You review and edit everything before it's added. Recipe links are read from the page's schema.org Recipe data when it has some.
+- **Store mode.** *I'm at the store* on the shopping tab opens a big, one-handed checklist grouped by aisle. Tap anywhere on a row and it slides into the cart (tap it there, or Undo, to put it back); the screen stays awake, and when the last thing is in, Lamar dances.
+- **Works offline.** Lists, items, meals and members are cached on the device, so the app opens and the list works with no signal. Item changes (add, check, edit, remove, clear) apply at once, wait in a persistent outbox, and replay in order when you're back; a banner says when you're offline and when everything has synced. Meals and AI features ask for a connection.
 - **Meal photos.** After saving, an image of the finished dish is generated from the actual ingredients. It regenerates only when the ingredients meaningfully change, and it reaches every device via realtime.
 
 ## Layout
@@ -104,5 +106,7 @@ OpenAI project as a final backstop.
 - Never put the service-role key in the app or `env.json`. Edge functions receive it automatically from Supabase.
 - `import-items` fetches user-supplied recipe links server-side through an SSRF guard (`import-items/safe_fetch.ts`): http/https on default ports only, every resolved address and every redirect hop must be public, 8 s timeout, 2 MB cap, HTML/JSON only. Photos are sent inline (base64) and never stored. `tool/import_items_e2e.mjs` exercises it against the live project with a throwaway user.
 - Generated images live in a public-read bucket under random UUID paths. Only the edge function writes to it.
+- Offline: `liveRows` takes an optional cache (`lib/data/offline/kv_store.dart`), and item writes go through `Outbox` (`lib/data/offline/outbox.dart`), which overlays queued changes on the server rows. Replays are idempotent (inserts ignore duplicates; updates/deletes by id never resurrect an item someone else removed; Clear only deletes the items that were checked, if they still are). `dart run tool/offline_check.dart` checks it end to end against the linked project with throwaway users.
+- `isInStoreModeProvider(listId)` (`lib/features/store/store_mode.dart`) is true while someone is in store mode, for "shopping now" presence.
 - `util/categories.dart` mirrors `public.categorize_item` in SQL; keep them in sync.
 - `util/item_merge.dart` mirrors `public.normalize_item_name` / `public.combine_quantities`; both are checked against `test/fixtures/item_merge_cases.json` (`flutter test`, and `dart run tool/pantry_tidy_check.dart` against the linked project).

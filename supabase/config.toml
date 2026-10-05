@@ -446,3 +446,7 @@ verify_jwt = true
 # Called by the database with x-classify-secret (private.classify_config), not a user JWT.
 [functions.classify-items]
 verify_jwt = false
+
+# Called by the database with x-housekeeping-secret (private.housekeeping_config), not a user JWT.
+[functions.housekeeping]
+verify_jwt = false

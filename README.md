@@ -207,6 +207,23 @@ turns a feature off. New AI features add a row (and a `QuotaKind` in
 `supabase/functions/_shared/clients.ts`). Also set a monthly budget on the
 OpenAI project as a final backstop.
 
+## Maintenance
+
+Meant to be hands-off. Postgres autovacuum and Supabase (backups, patching)
+handle the routine work; routine reindexing isn't needed. Scheduled jobs
+(pg_cron):
+
+| Job | When | Does |
+|---|---|---|
+| `notify-flush` | every 30 s | sends batched push notifications |
+| `classify-items` | every 10 min (backstop) | classifies queued item names |
+| `housekeeping` | daily 03:17 UTC | prunes the pg_cron run log (7 days), meal events (1 year), expired invites (30 days) and stale queues; deletes meal photos no meal uses (via the `housekeeping` function) |
+
+Run it by hand: `select public.housekeeping();` (returns what it cleaned).
+Worth doing occasionally: glance at Dashboard → Advisors, and keep usage
+alerts on Supabase and OpenAI. Free-plan projects pause after ~a week of
+inactivity; Pro doesn't.
+
 ## Notes
 
 - Never put the service-role key in the app or `env.json`. Edge functions receive it automatically from Supabase.

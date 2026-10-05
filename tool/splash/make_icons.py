@@ -157,21 +157,30 @@ def art(scale):
     return img
 
 
-def centred(scale, size=1024, bg=None):
+def centred(scale, size=1024, bg=None, focus=None):
+    """Art scaled by a whole number. With [focus] (a grid cell), that cell sits
+    at the centre and anything beyond the edge is cropped, so Lamar can fill
+    the icon with the bag and groceries running off it."""
     out = Image.new('RGBA', (size, size), (*bg, 255) if bg else (0, 0, 0, 0))
     a = art(scale)
-    bbox = a.getbbox()
-    a = a.crop(bbox)
-    out.alpha_composite(a, ((size - a.width) // 2, (size - a.height) // 2))
+    if focus is None:
+        a = a.crop(a.getbbox())
+        out.alpha_composite(a, ((size - a.width) // 2, (size - a.height) // 2))
+    else:
+        fx, fy = focus
+        out.paste(a, (round(size / 2 - fx * scale), round(size / 2 - fy * scale)), a)
     return out
 
 
+# Lamar's face and paws (the middle of his head, just above the bag rim).
+LAMAR_FOCUS = (20, 16)
+
 os.makedirs('assets/icon', exist_ok=True)
-# Full bleed: art fills ~80% of the tile.
-centred(25, bg=PINK_BG).convert('RGB').save('assets/icon/icon.png')
-# Adaptive foreground: launchers show only the centre ~66% (often as a circle),
-# so the art must sit inside a ~600 px circle.
-centred(13).save('assets/icon/icon_foreground.png')
+# Full bleed: zoomed in on Lamar; the bag and groceries run off the edges.
+centred(30, bg=PINK_BG, focus=LAMAR_FOCUS).convert('RGB').save('assets/icon/icon.png')
+# Adaptive foreground: launchers show only the centre ~66% (often as a circle);
+# Lamar fills it and the bag and groceries are allowed to clip at the edge.
+centred(22, focus=LAMAR_FOCUS).save('assets/icon/icon_foreground.png')
 
 # Preview: circle mask, squircle mask, and tiny sizes, to check legibility.
 os.makedirs('build', exist_ok=True)

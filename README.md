@@ -138,10 +138,10 @@ SPA rewrite and serves it as JSON):
 Each open list joins the private Realtime channel `presence:list:<list id>`.
 Realtime Authorization policies on `realtime.messages` only let list members
 receive or track presence there (`20261005140000_list_presence_auth.sql`).
-Store mode marks you as shopping with
-`ref.read(shoppingNowProvider.notifier).setShopping(listId, true)` (and `false`
-on leaving); that updates presence and pings the others (at most once per
-person per list per 30 minutes).
+Opening store mode (`isInStoreModeProvider`) marks you as shopping; anything
+else can use `ref.read(shoppingNowProvider.notifier).setShopping(listId, true)`
+(and `false` on leaving). Starting to shop also pings the others (at most once
+per person per list per 30 minutes).
 
 ### Push notifications (Firebase Cloud Messaging)
 

@@ -378,12 +378,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(checked('Bananas'), isTrue);
 
-    await tester.drag(find.text('Bread'), const Offset(600, 0)); // swipe right
+    await tester.timedDrag(find.text('Bread'), const Offset(600, 0), const Duration(milliseconds: 300)); // swipe right
     await tester.pumpAndSettle();
     expect(find.text('Bread'), findsNothing);
     expect(checked('Bread'), isNull);
 
-    await tester.drag(find.text('Milk'), const Offset(-600, 0)); // swipe left
+    await tester.timedDrag(find.text('Milk'), const Offset(-600, 0), const Duration(milliseconds: 300)); // swipe left
     await tester.pumpAndSettle();
     expect(find.text('Milk'), findsNothing);
     expect(checked('Milk'), isNull);

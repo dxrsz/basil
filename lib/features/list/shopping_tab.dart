@@ -11,6 +11,7 @@ import '../../models/models.dart';
 import '../../util/categories.dart';
 import '../../widgets/avatars.dart';
 import '../../widgets/connectivity_banner.dart';
+import '../../widgets/deliberate_swipe.dart';
 import '../../widgets/empty_state.dart';
 import '../import/import_flow.dart';
 
@@ -339,10 +340,9 @@ class _ItemTile extends StatelessWidget {
       child: Icon(Icons.delete_outline, color: scheme.onErrorContainer),
     );
     // Swipe either way to delete (with Undo); tap to check off; long-press to edit.
-    return Dismissible(
-      key: ValueKey('dismiss-${item.id}'),
-      direction: DismissDirection.horizontal,
-      onDismissed: (_) => onDelete(),
+    return DeliberateSwipe(
+      dismissKey: ValueKey('dismiss-${item.id}'),
+      onDismissed: onDelete,
       background: deleteBackground(Alignment.centerLeft),
       secondaryBackground: deleteBackground(Alignment.centerRight),
       child: InkWell(

@@ -110,7 +110,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     final items = ref.watch(itemsProvider(widget.listId)).value ?? const <Item>[];
     final onList = {
       for (final i in items)
-        if (!i.checked && i.recipeId != null) i.recipeId!,
+        if (!i.checked) ...i.recipeIds,
     };
 
     final needsProfile = taste.hasValue && kitchen.hasValue && (taste.value == null || kitchen.value == null);

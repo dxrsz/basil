@@ -335,16 +335,27 @@ Deno.serve(async (req) => {
       return { plan, meals, broken };
     };
 
-    // The keyword safety net: one retry with the problems spelled out, then
-    // drop whatever still breaks a rule (one quota unit either way).
-    let { plan, meals, broken } = await ask(prompt);
-    if (broken.length) {
-      console.warn("plan-meals: retrying after", broken);
-      ({ plan, meals, broken } = await ask(
-        `${prompt}\n\nYour previous answer broke the household's rules: ${broken.join("; ")}. ` +
+    // The keyword safety net: one retry with the problems spelled out. Then,
+    // night by night, take the retry's meal if it's safe, else the first
+    // attempt's if that was, else leave the night out (one quota unit either way).
+    const first = await ask(prompt);
+    let { plan, meals } = first;
+    let leftOut: string[] = [];
+    if (first.broken.length) {
+      console.warn("plan-meals: retrying after", first.broken);
+      const second = await ask(
+        `${prompt}\n\nYour previous answer broke the household's rules: ${first.broken.join("; ")}. ` +
           "Replace those meals with dishes that naturally avoid the problem, without mentioning it.",
-      ));
-      if (broken.length) meals = meals.filter((m) => violations(m, ctx.diets, ctx.dislikes).length === 0);
+      );
+      const safe = (m?: Meal) => !!m && violations(m, ctx.diets, ctx.dislikes).length === 0;
+      plan = second.plan;
+      meals = [];
+      for (let i = 0; i < Math.max(first.meals.length, second.meals.length); i++) {
+        const pick = [second.meals[i], first.meals[i]].find(safe);
+        if (pick) meals.push(pick);
+      }
+      leftOut = second.broken;
+      if (meals.length < want) console.warn("plan-meals: left out", second.broken);
     }
     if (meals.length === 0) {
       return error("Lamar couldn't find something that suits everyone. Try again, or nudge it a different way?", 502);
@@ -353,7 +364,11 @@ Deno.serve(async (req) => {
     switch (mode) {
       case "week": {
         const notes = reuseNotes(meals, plan.shared_perishables);
-        return json({ summary: plan.summary, meals: meals.map((m, i) => ({ ...m, reuse_note: notes[i] })) });
+        return json({
+          summary: plan.summary,
+          meals: meals.map((m, i) => ({ ...m, reuse_note: notes[i] })),
+          ...(meals.length < want ? { left_out: leftOut } : {}),
+        });
       }
       case "swap":
       case "nudge": {

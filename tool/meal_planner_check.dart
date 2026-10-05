@@ -180,7 +180,11 @@ Future<void> main() async {
     final sw = Stopwatch()..start();
     (status, body) = await plan(a, {'list_id': listId, 'mode': 'week'});
     final week = ((body['meals'] as List?) ?? const []).cast<Map<String, dynamic>>();
-    report('week plan returns 3 meals', status == 200 && week.length == 3, '$status in ${sw.elapsedMilliseconds} ms');
+    report(
+      'week plan returns 3 meals',
+      status == 200 && week.length == 3,
+      '$status in ${sw.elapsedMilliseconds} ms${body['left_out'] == null ? '' : ', left out: ${body['left_out']}'}',
+    );
     stdout.writeln('     “${body['summary']}”');
     for (final m in week) {
       stdout.writeln(
@@ -261,6 +265,23 @@ Future<void> main() async {
     await a.rpc('add_recipe_to_list', params: {'p_recipe_id': rid});
     final added = await a.from('meal_events').select().eq('recipe_id', rid).eq('kind', 'added');
     report('adding to the list logs one "added" event (repeats deduped)', added.length == 1, '${added.length}');
+
+    // A meal whose only grocery is already on the list merges instead of inserting.
+    await a.from('items').insert({'list_id': listId, 'name': 'Zucchini'});
+    final toast = await a.rpc(
+      'save_recipe',
+      params: {
+        'p_list_id': listId,
+        'p_recipe_id': null,
+        'p_name': 'Zucchini fritters',
+        'p_ingredients': [
+          {'name': 'Zucchini'},
+        ],
+      },
+    ) as String;
+    await a.rpc('add_recipe_to_list', params: {'p_recipe_id': toast});
+    final merged = await a.from('meal_events').select().eq('recipe_id', toast).eq('kind', 'added');
+    report('a meal merged into existing items still counts as added', merged.length == 1, '${merged.length}');
     final bSees = await b.from('meal_events').select().eq('list_id', listId);
     report('B sees the household\'s meal memory', bSees.length >= 3, '${bSees.length}');
     report('C sees none of it', (await c.from('meal_events').select().eq('list_id', listId)).isEmpty);

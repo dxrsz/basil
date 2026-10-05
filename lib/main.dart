@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config.dart';
 import 'data/offline/offline_providers.dart';
+import 'features/sharing_bootstrap.dart';
 import 'features/splash/splash_screen.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -61,6 +62,7 @@ class LamarsApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(sharingBootstrapProvider); // invite links + push notifications
     return MaterialApp.router(
       title: 'Lamar\'s Groceries',
       debugShowCheckedModeBanner: false,

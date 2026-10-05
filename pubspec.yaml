@@ -48,6 +48,9 @@ dependencies:
   uuid: ^4.6.0
   connectivity_plus: ^7.3.2
   wakelock_plus: ^1.8.1
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+  app_links: ^7.2.1
 
 dev_dependencies:
   flutter_test:

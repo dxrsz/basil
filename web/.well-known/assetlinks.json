@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.lamarsgroceries.app",
+      "sha256_cert_fingerprints": [
+        "93:81:DE:8A:D6:81:1C:D1:2F:3D:32:83:C1:F2:8D:38:4D:5F:78:E8:86:C9:61:E0:E1:91:39:A5:20:5F:EF:2A"
+      ]
+    }
+  }
+]

@@ -5,9 +5,13 @@
   "buildCommand": "bash tool/vercel/build.sh",
   "outputDirectory": "build/web",
   "rewrites": [
-    { "source": "/((?!assets/|canvaskit/|icons/|.*\\.[a-z0-9]+$).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|canvaskit/|icons/|\\.well-known/|.*\\.[a-z0-9]+$).*)", "destination": "/index.html" }
   ],
   "headers": [
+    {
+      "source": "/.well-known/(.*)",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+    },
     {
       "source": "/(index.html|flutter_bootstrap.js|flutter_service_worker.js|version.json|manifest.json)",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]

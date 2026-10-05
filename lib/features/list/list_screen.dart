@@ -11,6 +11,7 @@ import '../../widgets/empty_state.dart';
 import '../import/import_flow.dart';
 import '../lists/list_form_sheet.dart';
 import '../pantry/pantry_sheet.dart';
+import '../presence/presence_bar.dart';
 import '../tidy/tidy_sheet.dart';
 import 'recipes_tab.dart';
 import 'share_sheet.dart';
@@ -174,6 +175,7 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
       body: Column(
         children: [
           const ConnectivityBanner(),
+          PresenceBar(listId: list.id), // who else is here / at the store
           Expanded(
             child: TabBarView(
               controller: _tabs,

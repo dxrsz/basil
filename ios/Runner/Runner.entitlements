@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push notifications (APNs, delivered through Firebase Cloud Messaging).
+	     Xcode switches this to "production" for App Store / TestFlight builds. -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- Universal Links for invites: https://lamarsgroceries.app/join/CODE.
+	     Served by web/.well-known/apple-app-site-association (needs the Team ID). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:lamarsgroceries.app</string>
+	</array>
+</dict>
+</plist>

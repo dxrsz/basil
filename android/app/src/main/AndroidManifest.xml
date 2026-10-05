@@ -28,6 +28,23 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="lamarsgroceries" android:host="login-callback"/>
             </intent-filter>
+            <!-- Invite links: https://lamarsgroceries.app/join/CODE (verified App Link;
+                 see web/.well-known/assetlinks.json) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="lamarsgroceries.app" android:pathPrefix="/join/"/>
+            </intent-filter>
+            <!-- Invite link fallback: lamarsgroceries://join/CODE -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="lamarsgroceries" android:host="join"/>
+            </intent-filter>
+            <!-- Links are routed by the app (app_links), not pushed onto the router. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

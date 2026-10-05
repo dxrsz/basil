@@ -6,8 +6,11 @@ import 'package:go_router/go_router.dart';
 
 import 'data/providers.dart';
 import 'features/auth/sign_in_screen.dart';
+import 'features/join/join_routing.dart';
+import 'features/join/join_screen.dart';
 import 'features/list/list_screen.dart';
 import 'features/lists/lists_screen.dart';
+import 'features/notifications/notification_settings_screen.dart';
 import 'features/planner/kitchen_profile_screen.dart';
 import 'features/planner/planner_screen.dart';
 import 'features/planner/tonight_screen.dart';
@@ -22,19 +25,19 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     refreshListenable: refresh,
-    redirect: (context, state) {
-      final signedIn = auth.currentSession != null;
-      final atSignIn = state.matchedLocation == '/signin';
-      if (!signedIn) return atSignIn ? null : '/signin';
-      if (atSignIn) return '/';
-      return null;
-    },
+    // Signed-out users go to /signin; invite links (/join/CODE) continue after.
+    redirect: (context, state) => authRedirect(signedIn: auth.currentSession != null, location: state.uri),
     routes: [
       GoRoute(path: '/signin', builder: (_, _) => const SignInScreen()),
+      GoRoute(
+        path: '/join/:code',
+        builder: (_, s) => JoinScreen(code: s.pathParameters['code']!),
+      ),
       GoRoute(
         path: '/',
         builder: (_, _) => const ListsScreen(),
         routes: [
+          GoRoute(path: 'settings/notifications', builder: (_, _) => const NotificationSettingsScreen()),
           GoRoute(
             path: 'lists/:listId',
             builder: (_, s) => ListScreen(

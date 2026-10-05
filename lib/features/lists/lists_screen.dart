@@ -7,6 +7,8 @@ import '../../data/repository.dart';
 import '../../models/models.dart';
 import '../../widgets/avatars.dart';
 import '../../widgets/empty_state.dart';
+import '../join/join_link.dart';
+import '../notifications/push.dart';
 import 'list_form_sheet.dart';
 
 class ListsScreen extends ConsumerWidget {
@@ -27,8 +29,10 @@ class ListsScreen extends ConsumerWidget {
     final code = await showDialog<String>(context: context, builder: (_) => const _JoinDialog());
     if (code == null || code.isEmpty || !context.mounted) return;
     try {
-      final id = await ref.read(repositoryProvider).joinList(code);
+      // Accept a pasted invite link as well as a bare code.
+      final id = await ref.read(repositoryProvider).joinList(joinCodeFromUri(Uri.tryParse(code) ?? Uri()) ?? code);
       if (context.mounted) context.go('/lists/$id');
+      await ref.read(pushServiceProvider).requestPermissionIfNeeded();
     } catch (e) {
       if (context.mounted) showError(context, friendlyError(e));
     }
@@ -50,9 +54,13 @@ class ListsScreen extends ConsumerWidget {
           PopupMenuButton<String>(
             icon: const Icon(Icons.account_circle_outlined),
             onSelected: (v) {
-              if (v == 'signout') ref.read(repositoryProvider).signOut();
+              if (v == 'notifications') context.go('/settings/notifications');
+              if (v == 'signout') signOutAndUnregister(ref);
             },
-            itemBuilder: (_) => const [PopupMenuItem(value: 'signout', child: Text('Sign out'))],
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'notifications', child: Text('Notifications')),
+              PopupMenuItem(value: 'signout', child: Text('Sign out')),
+            ],
           ),
         ],
       ),

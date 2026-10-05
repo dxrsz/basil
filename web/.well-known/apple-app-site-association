@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID_PLACEHOLDER.com.lamarsgroceries.app",
+        "appIDs": ["TEAMID_PLACEHOLDER.com.lamarsgroceries.app"],
+        "paths": ["/join/*"],
+        "components": [{ "/": "/join/*", "comment": "Invite links" }]
+      }
+    ]
+  }
+}

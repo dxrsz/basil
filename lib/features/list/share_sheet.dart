@@ -7,6 +7,8 @@ import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../models/models.dart';
 import '../../widgets/avatars.dart';
+import '../join/join_link.dart';
+import '../notifications/push.dart';
 
 void showShareSheet(BuildContext context, ShoppingList list) {
   showModalBottomSheet<void>(
@@ -29,7 +31,14 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
   late final Future<String> _code = ref.read(repositoryProvider).createInvite(widget.list.id);
 
   String _message(String code) =>
-      'Join my "${widget.list.name}" list on Lamar\'s Groceries 🐈‍⬛\nOpen the app, tap "Join a list" and enter: $code';
+      'Join my "${widget.list.name}" list on Lamar\'s Groceries 🐈‍⬛\n${inviteLink(code)}\n\n'
+      'Or open the app, tap "Join a list" and enter: $code';
+
+  Future<void> _send(String code) async {
+    await SharePlus.instance.share(ShareParams(text: _message(code)));
+    // Sharing a list is when notifications start to matter; ask (once).
+    await ref.read(pushServiceProvider).requestPermissionIfNeeded();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +58,7 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
             Text('Share "${widget.list.name}"', style: theme.textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(
-              'Anyone with this code can view and edit the list. Codes expire after 7 days.',
+              'Anyone with the link or code can view and edit the list. Invites expire after 7 days.',
               style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
@@ -81,6 +90,14 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
                               ),
                             ),
                     ),
+                    if (code != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        inviteLink(code).replaceFirst('https://', ''),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -89,20 +106,18 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
                             onPressed: code == null
                                 ? null
                                 : () {
-                                    Clipboard.setData(ClipboardData(text: code));
+                                    Clipboard.setData(ClipboardData(text: inviteLink(code)));
                                     ScaffoldMessenger.of(context)
-                                        .showSnackBar(const SnackBar(content: Text('Code copied')));
+                                        .showSnackBar(const SnackBar(content: Text('Invite link copied')));
                                   },
                             icon: const Icon(Icons.copy),
-                            label: const Text('Copy'),
+                            label: const Text('Copy link'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: FilledButton.icon(
-                            onPressed: code == null
-                                ? null
-                                : () => SharePlus.instance.share(ShareParams(text: _message(code))),
+                            onPressed: code == null ? null : () => _send(code),
                             icon: const Icon(Icons.ios_share),
                             label: const Text('Send invite'),
                           ),

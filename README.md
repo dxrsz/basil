@@ -86,7 +86,12 @@ image Vercel builds on).
 The OpenAI-backed functions are limited per user (`public.consume_ai_quota`):
 suggestions 40 per 10 minutes / 300 per day, images 8 per hour / 30 per day.
 Over the limit, the function returns 429 with a friendly message and never
-calls OpenAI. Also set a monthly budget on the OpenAI project as a backstop.
+calls OpenAI.
+
+There's also a global daily cap across all users (`public.ai_global_limits`:
+3000 suggestions, 300 images), a kill switch that bounds spend however many
+accounts exist. Change it in Supabase → Table Editor → `ai_global_limits`;
+set `per_day` to 0 to turn a feature off. Also set a monthly budget on the OpenAI project as a backstop.
 
 ## Notes
 

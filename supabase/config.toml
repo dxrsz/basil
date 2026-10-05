@@ -428,3 +428,6 @@ verify_jwt = true
 
 [functions.import-items]
 verify_jwt = true
+
+[functions.tidy-list]
+verify_jwt = true

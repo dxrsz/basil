@@ -442,3 +442,7 @@ verify_jwt = false
 
 [functions.find-videos]
 verify_jwt = true
+
+# Called by the database with x-classify-secret (private.classify_config), not a user JWT.
+[functions.classify-items]
+verify_jwt = false

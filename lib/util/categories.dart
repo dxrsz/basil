@@ -1,5 +1,5 @@
-/// Aisle grouping for list items. Mirrors `public.categorize_item` in the
-/// database migration; keep the two in sync.
+/// Aisle grouping for list items. The keyword rules below mirror
+/// `public.categorize_item_rules` (tool/categories/rules.sql).
 const categoryOrder = [
   'Produce',
   'Meat',
@@ -26,30 +26,88 @@ const categoryEmoji = {
   'Other': '🛍️',
 };
 
+// Mirrors public.categorize_item_rules in SQL (tool/categories/rules.sql):
+// whole words, plural-tolerant, specific phrases first so "peanut butter"
+// isn't dairy and "eggplant" isn't eggs. This is only the instant guess: the
+// database then assigns the aisle from the list's own choice or the shared
+// category cache. Both copies are checked against
+// test/fixtures/category_cases.json.
 final _rules = <(String, RegExp)>[
-  ('Meat', RegExp(r'(chicken|beef|pork|steak|bacon|sausage|turkey|lamb|ham|salami|prosciutto|ground meat|mince)')),
-  ('Seafood', RegExp(r'(salmon|tuna|shrimp|prawn|cod|tilapia|fish|crab|lobster|scallop|mussel|clam)')),
-  ('Dairy & Eggs', RegExp(r'(milk|cheese|yogurt|yoghurt|butter|cream|egg|feta|parmesan|mozzarella|cheddar|ricotta)')),
-  ('Bakery', RegExp(r'(bread|bun|bagel|tortilla|pita|naan|baguette|croissant|roll)')),
-  ('Frozen', RegExp(r'(frozen|ice cream)')),
+  ('Bakery', RegExp(r'\b(hot dog|hamburger|burger|slider) buns?\b')),
+  ('Produce', RegExp(r'\bbutter lettuce\b')),
+  ('Pantry', RegExp(r'\b(bread ?crumbs|croutons|noodles?|ramen|soups?)\b')),
+  ('Pantry', RegExp(r'\b(powder|paste|sauce|extract|seasoning|spice blend|marinade|dressing|bouillon cubes?)\b')),
+  ('Pantry', RegExp(r'\b(lemon|lime) juice\b')),
+  ('Pantry', RegExp(r'\bvinegar\b')),
+  ('Drinks', RegExp(r'\bjuices?\b')),
+  ('Pantry', RegExp(r'\b(peanut|almond|cashew|sunflower|nut|apple|cookie) butter\b')),
+  ('Pantry', RegExp(r'\b(broth|stock|bouillon|stocks)\b')),
+  (
+    'Pantry',
+    RegExp(
+      r'\b(corn ?starch|cornmeal|corn ?flour|black pepper|white pepper|peppercorns?|pepper flakes|tortilla chips?|potato chips?|coconut milk|canned)\b',
+    ),
+  ),
+  ('Frozen', RegExp(r'\b(ice cream|gelato|sorbet|popsicles?|frozen)\b')),
+  ('Dairy & Eggs', RegExp(r'\b(almond|oat|soy|rice|cashew) ?milks?\b')),
   (
     'Produce',
     RegExp(
-      r'(apple|banana|lemon|lime|orange|berry|berries|avocado|tomato|onion|garlic|potato|lettuce|spinach|kale|carrot|pepper|cucumber|broccoli|cilantro|parsley|basil|mint|ginger|scallion|celery|mushroom|zucchini|corn|cabbage|edamame|mango|grape|herb|jalape)',
+      r'\b(eggplants?|butternut|bell peppers?|jalape(n|ñ)os?|chil(i|e|li)s?|chil(i|e) peppers?|green onions?|scallions?|spring onions?|tofu|tempeh|sweet potato(es)?)\b',
+    ),
+  ),
+  (
+    'Meat',
+    RegExp(
+      r'\b(chicken|beef|steaks?|pork|bacon|sausages?|turkey|lamb|ham|salami|prosciutto|pepperoni|chorizo|brisket|ribs?|mince|ground meat|hot dogs?|meatballs?|veal|duck)\b',
+    ),
+  ),
+  (
+    'Seafood',
+    RegExp(
+      r'\b(salmon|tuna|shrimps?|prawns?|cod|tilapia|fish|crabs?|lobsters?|scallops?|mussels?|clams?|halibut|anchov(y|ies)|sardines?|trout|oysters?)\b',
+    ),
+  ),
+  (
+    'Dairy & Eggs',
+    RegExp(
+      r'\b(milk|cheeses?|cheddar|mozzarella|parmesan|feta|ricotta|brie|yogh?urts?|butter|cream|creamer|eggs?|ghee|kefir|half and half|buttermilk)\b',
+    ),
+  ),
+  (
+    'Bakery',
+    RegExp(
+      r'\b(bread|buns?|bagels?|tortillas?|pitas?|naan|baguettes?|croissants?|rolls?|muffins?|sourdough|brioche|flatbreads?|wraps?|ciabatta)\b',
+    ),
+  ),
+  (
+    'Produce',
+    RegExp(
+      r'\b(apples?|bananas?|lemons?|limes?|oranges?|berry|berries|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|grapes?|avocados?|tomato(es)?|onions?|garlic|potato(es)?|lettuce|spinach|kale|arugula|carrots?|cucumbers?|broccoli|cauliflower|cilantro|parsley|basil|mint|dill|thyme|rosemary|ginger|celery|mushrooms?|zucchinis?|squash|corn|cabbage|edamame|mangos?|mangoes|peach(es)?|pears?|plums?|pineapples?|melons?|watermelons?|cherr(y|ies)|kiwis?|herbs|leeks?|shallots?|radish(es)?|beets?|asparagus|peas|green beans|bok choy|fennel|artichokes?|grapefruits?|clementines?|tangerines?)\b',
     ),
   ),
   (
     'Pantry',
     RegExp(
-      r'(rice|pasta|noodle|quinoa|oat|flour|sugar|bean|lentil|chickpea|can |canned|broth|stock|sauce|oil|vinegar|salt|spice|cumin|paprika|cinnamon|oregano|soy|honey|syrup|cereal|nut|seed|salsa|mayo|mustard|ketchup|sriracha|tahini|cracker|chip)',
+      r'\b(rice|pasta|spaghetti|penne|noodles?|ramen|udon|quinoa|couscous|oats|oatmeal|flour|sugar|beans?|lentils?|chickpeas?|sauces?|oils?|vinegar|salt|spices?|cumin|paprika|cinnamon|oregano|soy sauce|honey|syrup|cereal|granola|nuts?|almonds|walnuts|pecans|cashews|peanuts|seeds?|salsa|mayo|mayonnaise|mustard|ketchup|sriracha|tahini|crackers?|chips|pretzels|popcorn|jam|jelly|olives?|pickles?|capers|baking soda|baking powder|yeast|vanilla|chocolate|cocoa|candy|cookies|breadcrumbs|panko|stuffing|bouillon|curry|miso|gochujang|harissa|pesto|hummus)\b',
     ),
   ),
-  ('Drinks', RegExp(r'(water|juice|soda|coffee|tea|wine|beer|kombucha|sparkling)')),
-  ('Household', RegExp(r'(paper|towel|soap|detergent|foil|wrap|bag|sponge|trash|tissue)')),
+  (
+    'Drinks',
+    RegExp(
+      r'\b(water|juices?|soda|pop|coffee|tea|wine|beer|kombucha|seltzer|lemonade|cider|vodka|gin|rum|whiskey|tequila|sparkling)\b',
+    ),
+  ),
+  (
+    'Household',
+    RegExp(
+      r'\b(paper towels?|toilet paper|tissues?|napkins?|soap|detergent|foil|plastic wrap|cling film|bags?|sponges?|trash|garbage|bleach|cleaner|wipes|shampoo|conditioner|toothpaste|deodorant|batteries|light bulbs?|diapers?|litter|pet food|cat food|dog food|parchment)\b',
+    ),
+  ),
 ];
 
 String categorize(String name) {
-  final n = ' ${name.toLowerCase()} ';
+  final n = name.toLowerCase();
   for (final (category, re) in _rules) {
     if (re.hasMatch(n)) return category;
   }

@@ -391,6 +391,10 @@ void main() {
     await tester.longPress(find.text('Eggs'));
     await tester.pumpAndSettle();
     expect(find.text('Edit item'), findsOneWidget);
+    // The aisle picker shows where it is now.
+    final chip = tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '🧀 Dairy & Eggs'));
+    expect(chip.selected, isTrue);
+    expect(find.byType(ChoiceChip), findsNWidgets(10));
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(checked('Eggs'), isFalse);

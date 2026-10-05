@@ -218,16 +218,26 @@ class Repository {
     }
   }
 
-  Future<void> updateItem(String id, {required String name, String? quantity, String? listId}) {
+  /// Edits an item. The database picks the aisle when the name changes (the
+  /// list's own choice, the shared category cache, then keyword rules), so the
+  /// category is only sent when someone explicitly moved it ([category]).
+  Future<void> updateItem(String id, {required String name, String? quantity, String? listId, String? category}) {
     final changes = {
       'name': name,
       'quantity': (quantity?.trim().isEmpty ?? true) ? null : quantity!.trim(),
-      'category': categorize(name),
+      'category': ?category,
     };
     final outbox = _outbox;
     final list = listId ?? _listOf(id);
     if (outbox != null && list != null) return outbox.updateItem(list, id, changes);
     return _db.from('items').update(changes).eq('id', id);
+  }
+
+  /// "Move to aisle…": remembers the choice for this list (so it sticks for
+  /// this item from now on) and moves other unchecked items with that name.
+  Future<void> moveItemCategory(String itemId, String category) async {
+    _requireOnline();
+    await _db.rpc('move_item_category', params: {'p_item_id': itemId, 'p_category': category});
   }
 
   Future<void> setChecked(String id, bool checked, {String? listId}) {

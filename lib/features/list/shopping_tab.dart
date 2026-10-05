@@ -104,13 +104,24 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
   }
 
   Future<void> _edit(Item item) async {
-    final result = await showDialog<({String name, String quantity})>(
+    final result = await showDialog<({String name, String quantity, String category})>(
       context: context,
       builder: (_) => _EditItemDialog(item: item),
     );
     if (result == null || result.name.isEmpty) return;
+    final moved = result.category != item.category;
     try {
-      await _repo.updateItem(item.id, name: result.name, quantity: result.quantity, listId: item.listId);
+      // Remember the aisle for this list first, so a rename in the same edit
+      // resolves to it too.
+      if (moved) await _repo.moveItemCategory(item.id, result.category);
+      await _repo.updateItem(
+        item.id,
+        name: result.name,
+        quantity: result.quantity,
+        listId: item.listId,
+        category: moved ? result.category : null,
+      );
+      if (moved && mounted) showError(context, 'Moved to ${result.category}. Lamar will remember for this list.');
     } catch (e) {
       if (mounted) showError(context, friendlyError(e));
     }
@@ -479,6 +490,7 @@ class _EditItemDialog extends StatefulWidget {
 class _EditItemDialogState extends State<_EditItemDialog> {
   late final _name = TextEditingController(text: widget.item.name);
   late final _qty = TextEditingController(text: widget.item.quantity);
+  late String _category = categoryOrder.contains(widget.item.category) ? widget.item.category : 'Other';
 
   @override
   void dispose() {
@@ -487,18 +499,19 @@ class _EditItemDialogState extends State<_EditItemDialog> {
     super.dispose();
   }
 
-  void _save() => Navigator.pop(context, (name: _name.text.trim(), quantity: _qty.text.trim()));
+  void _save() => Navigator.pop(context, (name: _name.text.trim(), quantity: _qty.text.trim(), category: _category));
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Edit item'),
+      scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextField(
             controller: _name,
-            autofocus: true,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(labelText: 'Item'),
           ),
@@ -507,6 +520,21 @@ class _EditItemDialogState extends State<_EditItemDialog> {
             controller: _qty,
             decoration: const InputDecoration(labelText: 'Quantity (optional)'),
             onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: 16),
+          Text('Aisle', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final c in categoryOrder)
+                ChoiceChip(
+                  label: Text('${categoryEmoji[c]} $c'),
+                  selected: c == _category,
+                  onSelected: (_) => setState(() => _category = c),
+                ),
+            ],
           ),
         ],
       ),

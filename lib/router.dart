@@ -10,6 +10,7 @@ import 'features/list/list_screen.dart';
 import 'features/lists/lists_screen.dart';
 import 'features/recipe/recipe_detail_screen.dart';
 import 'features/recipe/recipe_editor_screen.dart';
+import 'features/store/store_mode_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(supabaseProvider).auth;
@@ -38,6 +39,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               initialTab: s.uri.queryParameters['tab'] == 'recipes' ? 1 : 0,
             ),
             routes: [
+              GoRoute(
+                path: 'store',
+                builder: (_, s) => StoreModeScreen(listId: s.pathParameters['listId']!),
+              ),
               GoRoute(
                 path: 'recipes/new',
                 builder: (_, s) => RecipeEditorScreen(listId: s.pathParameters['listId']!),

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/offline/offline_providers.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../widgets/avatars.dart';
+import '../../widgets/connectivity_banner.dart';
 import '../../widgets/empty_state.dart';
 import '../import/import_flow.dart';
 import '../lists/list_form_sheet.dart';
@@ -89,6 +91,10 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
     final list = ref.watch(listProvider(widget.listId));
     final members = ref.watch(membersProvider(widget.listId)).value ?? const [];
     final isOwner = list != null && list.ownerId == ref.watch(currentUserIdProvider);
+    ref.listen(outboxRejectionsProvider, (_, next) {
+      final rejection = next.value;
+      if (rejection != null) showError(context, 'Lamar couldn\'t sync a change: ${friendlyError(rejection.error)}');
+    });
 
     if (list == null) {
       final loading = ref.watch(listsProvider).isLoading;
@@ -162,11 +168,18 @@ class _ListScreenState extends ConsumerState<ListScreen> with SingleTickerProvid
               ],
             )
           : null,
-      body: TabBarView(
-        controller: _tabs,
+      body: Column(
         children: [
-          ShoppingTab(listId: list.id),
-          RecipesTab(listId: list.id),
+          const ConnectivityBanner(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabs,
+              children: [
+                ShoppingTab(listId: list.id),
+                RecipesTab(listId: list.id),
+              ],
+            ),
+          ),
         ],
       ),
     );

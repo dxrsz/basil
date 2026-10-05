@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/import_repository.dart';
+import '../../data/offline/offline_providers.dart';
 import '../../data/providers.dart';
 import '../../data/repository.dart';
 import '../../models/models.dart';
 import '../../util/categories.dart';
 import '../../widgets/avatars.dart';
+import '../../widgets/connectivity_banner.dart';
 import '../../widgets/empty_state.dart';
 import '../import/import_flow.dart';
 
@@ -66,7 +69,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
     HapticFeedback.selectionClick();
     setState(() => _pending[item.id] = checked);
     try {
-      await _repo.setChecked(item.id, checked);
+      await _repo.setChecked(item.id, checked, listId: item.listId);
     } catch (e) {
       if (!mounted) return;
       setState(() => _pending.remove(item.id));
@@ -78,7 +81,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _hidden.add(item.id));
     try {
-      await _repo.deleteItem(item.id);
+      await _repo.deleteItem(item.id, listId: item.listId);
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
@@ -107,7 +110,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
     );
     if (result == null || result.name.isEmpty) return;
     try {
-      await _repo.updateItem(item.id, name: result.name, quantity: result.quantity);
+      await _repo.updateItem(item.id, name: result.name, quantity: result.quantity, listId: item.listId);
     } catch (e) {
       if (mounted) showError(context, friendlyError(e));
     }
@@ -117,7 +120,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
     final ids = done.map((i) => i.id).toSet();
     setState(() => _hidden.addAll(ids));
     try {
-      final n = await _repo.clearChecked(widget.listId);
+      final n = await _repo.clearChecked(widget.listId, ids: ids);
       if (mounted && n > 0) showError(context, 'Cleared $n item${n == 1 ? '' : 's'}');
     } catch (e) {
       if (!mounted) return;
@@ -140,6 +143,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
 
     final membersById = {for (final m in members) m.userId: m};
     final shared = members.length > 1;
+    final unsynced = ref.watch(pendingItemIdsProvider(widget.listId)).value ?? const <String>{};
 
     final raw = itemsAsync.value;
     Widget body;
@@ -176,6 +180,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
             )
           : CustomScrollView(
               slivers: [
+                if (todo.isNotEmpty) SliverToBoxAdapter(child: _StoreModeButton(listId: widget.listId)),
                 if (todo.isEmpty)
                   const SliverToBoxAdapter(
                     child: Padding(
@@ -192,6 +197,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                           key: ValueKey(item.id),
                           item: item,
                           recipeName: mealTag(item),
+                          pending: unsynced.contains(item.id),
                           onToggle: (v) => _toggle(item, v),
                           onDelete: () => _delete(item),
                           onTap: () => _edit(item),
@@ -233,6 +239,7 @@ class _ShoppingTabState extends ConsumerState<ShoppingTab> {
                             item: item,
                             recipeName: mealTag(item),
                             checkedBy: shared ? membersById[item.checkedBy] : null,
+                            pending: unsynced.contains(item.id),
                             onToggle: (v) => _toggle(item, v),
                             onDelete: () => _delete(item),
                             onTap: () => _edit(item),
@@ -282,11 +289,15 @@ class _ItemTile extends StatelessWidget {
     required this.onTap,
     this.recipeName,
     this.checkedBy,
+    this.pending = false,
   });
 
   final Item item;
   final String? recipeName;
   final Member? checkedBy;
+
+  /// Has changes that haven't reached the server yet (offline).
+  final bool pending;
   final ValueChanged<bool> onToggle;
   final VoidCallback onDelete;
   final VoidCallback onTap;
@@ -356,6 +367,7 @@ class _ItemTile extends StatelessWidget {
                   ),
                 ),
               ),
+              if (pending) const Padding(padding: EdgeInsets.only(right: 12), child: PendingSyncIcon()),
               if (checkedBy != null)
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
@@ -367,6 +379,26 @@ class _ItemTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "I'm at the store": opens store mode for this list.
+class _StoreModeButton extends StatelessWidget {
+  const _StoreModeButton({required this.listId});
+
+  final String listId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: FilledButton.tonalIcon(
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+        onPressed: () => context.go('/lists/$listId/store'),
+        icon: const Icon(Icons.shopping_cart_outlined),
+        label: const Text('I\'m at the store'),
       ),
     );
   }

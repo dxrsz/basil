@@ -18,6 +18,7 @@ class OutboxOp {
     this.data = const {},
     this.ids = const [],
     this.attempts = 0,
+    this.waiting = false,
   });
 
   final int seq;
@@ -37,6 +38,11 @@ class OutboxOp {
   /// can't have reached the server, so it's safe to cancel out locally.
   int attempts;
 
+  /// Held up by the connection (queued offline, or a send failed), as
+  /// opposed to just being sent. Only these are shown as "not synced yet",
+  /// so normal online taps don't flicker a pending marker.
+  bool waiting;
+
   Map<String, dynamic> toJson() => {
     'seq': seq,
     'kind': kind.name,
@@ -55,6 +61,7 @@ class OutboxOp {
     data: Map<String, dynamic>.from((j['data'] as Map?) ?? const {}),
     ids: ((j['ids'] as List?) ?? const []).cast<String>(),
     attempts: (j['attempts'] as int?) ?? 0,
+    waiting: true, // it outlived an app run, so it was certainly held up
   );
 
   @override
@@ -67,7 +74,7 @@ class SyncState {
 
   final bool online;
 
-  /// Changes waiting to reach the server.
+  /// Changes held up by the connection, waiting to reach the server.
   final int pending;
 
   /// True for a moment after coming back online with everything sent.
@@ -228,7 +235,7 @@ class Outbox {
     List<String> ids = const [],
   }) async {
     if (_disposed) throw StateError('Outbox disposed');
-    final op = OutboxOp(seq: _nextSeq++, kind: kind, listId: listId, id: id, data: data, ids: ids);
+    final op = OutboxOp(seq: _nextSeq++, kind: kind, listId: listId, id: id, data: data, ids: ids, waiting: !online);
     final cancelled = _cancelOut(op);
     if (!cancelled) _queue.add(op);
     await _persist();
@@ -314,10 +321,10 @@ class Outbox {
     return rows.values.toList();
   }
 
-  /// Ids of items in [listId] with changes not yet on the server.
+  /// Ids of items in [listId] with changes held up by the connection.
   Set<String> pendingIds(String listId) => {
     for (final op in _queue)
-      if (op.listId == listId) ...[?op.id, ...op.ids],
+      if (op.listId == listId && op.waiting) ...[?op.id, ...op.ids],
   };
 
   bool _reflected(OutboxOp op, Map<String, Map<String, dynamic>> server) {
@@ -438,6 +445,9 @@ class Outbox {
     if (value == _online) return;
     _online = value;
     if (!value) {
+      for (final op in _queue) {
+        op.waiting = true;
+      }
       _recovering = true;
       _retryTimer ??= Timer.periodic(retryEvery, (_) => _retryNow());
     } else {
@@ -482,7 +492,7 @@ class Outbox {
   void _publish({bool? justSynced}) {
     if (_disposed) return;
     final synced = justSynced ?? (_online && _state.justSynced);
-    final next = SyncState(online: _online, pending: _queue.length, justSynced: synced);
+    final next = SyncState(online: _online, pending: _queue.where((o) => o.waiting).length, justSynced: synced);
     if (next == _state) return;
     _state = next;
     _states.add(next);

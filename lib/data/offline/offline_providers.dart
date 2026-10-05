@@ -132,3 +132,9 @@ final pendingItemIdsProvider = StreamProvider.family<Set<String>, String>((ref, 
     yield outbox.pendingIds(listId);
   }
 });
+
+/// Changes the server turned down after the screen that made them moved on.
+final outboxRejectionsProvider = StreamProvider<OutboxRejection>((ref) {
+  final outbox = ref.watch(outboxProvider);
+  return outbox == null ? const Stream.empty() : outbox.rejections;
+});

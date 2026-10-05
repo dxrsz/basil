@@ -132,9 +132,9 @@ class MealReviewRow {
 
 /// Works out which of [recipe]'s ingredients to ask about, mirroring what
 /// `add_recipe_to_list` will do: ingredients already on the list from this
-/// meal, or only in the cart, aren't asked about (the server skips them), and
-/// repeated lines are combined. Ones already on the list from elsewhere will
-/// merge, so they default to "add".
+/// meal aren't asked about (the server skips them), and repeated lines are
+/// combined. Ones already on the list to get will merge (quantities added),
+/// and ones only in the cart get a fresh item, so both default to "add".
 List<MealReviewRow> buildMealReview({
   required Recipe recipe,
   required List<Item> items,
@@ -143,14 +143,8 @@ List<MealReviewRow> buildMealReview({
 }) {
   final memory = {for (final p in pantry) p.nameKey: p};
   final unchecked = <String, Item>{};
-  final checked = <String>{};
   for (final i in items) {
-    final key = normalizeItemName(i.name);
-    if (i.checked) {
-      checked.add(key);
-    } else {
-      unchecked.putIfAbsent(key, () => i);
-    }
+    if (!i.checked) unchecked.putIfAbsent(normalizeItemName(i.name), () => i);
   }
   final fromThisMeal = {
     for (final i in items)
@@ -175,7 +169,7 @@ List<MealReviewRow> buildMealReview({
 
   return [
     for (final key in order)
-      if (!fromThisMeal.contains(key) && (unchecked.containsKey(key) || !checked.contains(key)))
+      if (!fromThisMeal.contains(key))
         MealReviewRow(
           name: names[key]!,
           quantity: quantities[key],

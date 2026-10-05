@@ -120,18 +120,18 @@ void main() {
       const Ingredient(name: 'Tortilla chips'),
     ];
 
-    test('pre-marks staples and remembered items, merges with the list, skips what the server skips', () {
+    test('pre-marks staples and remembered items, merges with the list, asks about cart items', () {
       final rows = buildMealReview(
         recipe: meal(ingredients),
         items: [
           item('1', 'Avocado', qty: '1'), // on the list → merges
-          item('2', 'Lime', checked: true), // only in the cart → skipped
+          item('2', 'Lime', checked: true), // only in the cart → asked about (gets a fresh item)
           item('3', 'Corn', recipeIds: ['R']), // already from this meal → skipped
         ],
         pantry: [staple('Tortilla chips', key: 'tortilla chip', daysAgo: 2)],
         now: _t0,
       );
-      expect([for (final r in rows) r.name], ['Olive oil', 'Avocados', 'Rice', 'Cilantro', 'Tortilla chips']);
+      expect([for (final r in rows) r.name], ['Olive oil', 'Avocados', 'Rice', 'Cilantro', 'Limes', 'Tortilla chips']);
       final by = {for (final r in rows) r.name: r};
       expect(by['Olive oil']!.add, isFalse);
       expect(by['Rice']!.add, isFalse); // a staple
@@ -141,6 +141,9 @@ void main() {
       expect(by['Avocados']!.add, isTrue);
       expect(by['Avocados']!.onList?.id, '1');
       expect(by['Avocados']!.combined, '3');
+      // Already in the cart: the meal needs its own, so it defaults to add (as a new item).
+      expect(by['Limes']!.add, isTrue);
+      expect(by['Limes']!.onList, isNull);
     });
 
     test('items on the list default to add even when they look like staples', () {

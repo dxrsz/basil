@@ -4,9 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../models/models.dart';
 import '../util/categories.dart';
-import '../util/item_merge.dart';
 import 'providers.dart';
 
 /// What Lamar thinks an imported photo/link/text is.
@@ -75,27 +73,27 @@ class ImportRepository {
   Future<ImportResult> fromText(String text, {ImportKind? hint}) =>
       _invoke({'mode': 'text', 'text': text, 'hint': ?hint?.name});
 
-  /// Adds items to the list, skipping any already on it (unchecked, same name).
-  /// Returns how many were added.
-  Future<int> addItems(String listId, List<ImportedItem> items, {Iterable<Item> existing = const []}) async {
-    final have = {
-      for (final i in existing)
-        if (!i.checked) normalizeItemName(i.name),
-    };
-    final rows = <Map<String, dynamic>>[];
+  /// Adds items to the list through `add_item`, the same path as typing one:
+  /// an item already on the list to get is merged into it, quantities added
+  /// ("2 eggs" + "6 eggs" → "8 eggs"). Returns how many were new vs merged.
+  Future<({int added, int merged})> addItems(String listId, List<ImportedItem> items) async {
+    var added = 0, merged = 0;
     for (final i in items) {
       final name = i.name.trim();
-      if (name.isEmpty || !have.add(normalizeItemName(name))) continue;
+      if (name.isEmpty) continue;
       final qty = i.quantity?.trim();
-      rows.add({
-        'list_id': listId,
-        'name': name,
-        'quantity': (qty == null || qty.isEmpty) ? null : qty,
-        'category': categorize(name),
-      });
+      final res = await _db.rpc(
+        'add_item',
+        params: {
+          'p_list_id': listId,
+          'p_name': name,
+          'p_quantity': (qty == null || qty.isEmpty) ? null : qty,
+          'p_category': categorize(name),
+        },
+      );
+      (res as Map)['merged'] == true ? merged++ : added++;
     }
-    if (rows.isNotEmpty) await _db.from('items').insert(rows);
-    return rows.length;
+    return (added: added, merged: merged);
   }
 }
 

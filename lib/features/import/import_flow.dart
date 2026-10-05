@@ -61,19 +61,17 @@ Future<void> importToList(BuildContext context, WidgetRef ref, {required String 
       router.go('/lists/$listId/recipes/$id');
       messenger.showSnackBar(SnackBar(content: Text('Saved ${decision.mealName}. Lamar is snapping a photo of it.')));
     } else {
-      final existing = ref.read(itemsProvider(listId)).value ?? const <Item>[];
-      final added = await ref.read(importRepositoryProvider).addItems(listId, decision.items, existing: existing);
-      final skipped = decision.items.length - added;
+      final r = await ref.read(importRepositoryProvider).addItems(listId, decision.items);
+      String n(int k) => '$k item${k == 1 ? '' : 's'}';
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(
-              added == 0
-                  ? 'Everything was already on the list'
-                  : 'Added $added item${added == 1 ? '' : 's'}'
-                        '${skipped > 0 ? ' ($skipped already on the list)' : ''}',
-            ),
+            content: Text(switch ((r.added, r.merged)) {
+              (0, final m) => 'Added to ${n(m)} already on the list',
+              (final a, 0) => 'Added ${n(a)}',
+              (final a, final m) => 'Added ${n(a)}, and topped up $m already on the list',
+            }),
           ),
         );
     }

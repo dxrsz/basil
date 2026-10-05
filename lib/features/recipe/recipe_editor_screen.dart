@@ -52,6 +52,10 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   bool _picking = false;
   final _picked = <String>[];
   bool _saving = false;
+
+  /// Whether saving goes through "Got this already?" and onto the list: always
+  /// for a new meal (that's the point of one); when editing, only if the meal
+  /// is on the list now (so new ingredients follow it there).
   bool _addToList = true;
   bool _loaded = false;
   String? _aiError;
@@ -328,8 +332,6 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           ],
         );
         await showAddMealToListFlow(context, ref, meal);
-      } else if (!_isNew) {
-        await _repo.removeRecipeFromList(id);
       }
       // Fire and forget: the photo shows up via realtime when it's ready, and
       // the function skips regeneration if the meal hasn't meaningfully changed.
@@ -516,22 +518,16 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
           ),
 
           const SizedBox(height: 28),
-          Card(
-            child: SwitchListTile(
-              value: _addToList,
-              onChanged: (v) => setState(() => _addToList = v),
-              title: const Text('Put ingredients on the shopping list'),
-              subtitle: const Text('Skips anything already on it'),
-            ),
-          ),
-          const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.photo_camera_outlined, size: 16, color: scheme.onSurfaceVariant),
+              Icon(Icons.info_outline, size: 16, color: scheme.onSurfaceVariant),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'After you save, Lamar snaps a photo of the finished meal using these ingredients.',
+                  _addToList
+                      ? 'When you save, the ingredients go on your shopping list (Lamar checks what you\'ve already '
+                            'got first, and adds to anything already on it), and he snaps a photo of the meal.'
+                      : 'Saving updates the meal and its photo. To shop for it, use Add to list on its page.',
                   style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ),

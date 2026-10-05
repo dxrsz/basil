@@ -23,6 +23,9 @@ from snap import palette_labels, render, snap  # noqa: E402
 
 HERE = os.path.dirname(__file__)
 SIZE = 1024
+# Lamar's size: whole-number pixel scales (his grid is ~54x65 cells).
+FG_SCALE = int(os.environ.get('FG_SCALE', 11))      # Android foreground (visible circle ~683 px)
+FLAT_SCALE = int(os.environ.get('FLAT_SCALE', 14))  # flattened iOS/web icon
 
 
 def despeckle(g: np.ndarray) -> np.ndarray:
@@ -54,10 +57,10 @@ fg, _, _ = snap(labf, 28, 16.6)
 fg = trim(despeckle(fg))
 
 
-def centred(cells: np.ndarray, scale: int) -> Image.Image:
+def centred(cells: np.ndarray, scale: int, dy: int = 0) -> Image.Image:
     art = render(cells, pal_fg, scale)
     out = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-    out.alpha_composite(art, ((SIZE - art.width) // 2, (SIZE - art.height) // 2))
+    out.paste(art, ((SIZE - art.width) // 2, (SIZE - art.height) // 2 + dy), art)  # paste clips at the edge
     return out
 
 
@@ -72,10 +75,10 @@ adaptive_bg = adaptive_bg.crop((c, c, c + SIZE, c + SIZE))
 adaptive_bg.convert('RGB').save('assets/icon/icon_background.png')
 # Adaptive foreground: launchers show the centre 72/108 of the layer, usually
 # masked to a circle (~683 px here); Lamar fills most of it.
-centred(fg, 8).save('assets/icon/icon_foreground.png')
+centred(fg, FG_SCALE, dy=36).save('assets/icon/icon_foreground.png')  # ears inside the circle; the bag clips
 # Flattened icon: Lamar large on the glow.
 flat = background.copy()
-flat.alpha_composite(centred(fg, 11))
+flat.alpha_composite(centred(fg, FLAT_SCALE))
 flat.convert('RGB').save('assets/icon/icon.png')
 
 # Preview: Android circle (what launchers show), iOS squircle, small sizes.

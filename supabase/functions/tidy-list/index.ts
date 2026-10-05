@@ -10,6 +10,7 @@
 import { error, json, preflight } from "../_shared/cors.ts";
 import { consumeQuota, userClient } from "../_shared/clients.ts";
 import { structured } from "../_shared/openai.ts";
+import { safeFix, safeMerge, soundsUnsure } from "./guard.ts";
 
 const MAX_ITEMS = 150;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,8 +54,9 @@ Propose only changes a shopper would clearly welcome:
 - "merge": two or more lines that are the same thing to buy: near-duplicates, synonyms, or a vague and a specific version of the same product ("Chicken" + "Chicken thighs" → "Chicken thighs"; "Scallions" + "Green onions"). Combine the quantities into one sensible quantity, adding amounts in compatible units ("1 lb" + "2 lb" → "3 lb", "8 oz" + "1 lb" → "1.5 lb"); if they can't be added, join them with " + ".
 - "fix": one line with an obvious mistake: a misspelling ("Tomatos" → "Tomatoes"), or a quantity stuck in the name ("Eggs 12" → name "Eggs", quantity "12").
 
-Never merge different products (lemons vs limes, chicken breasts vs chicken thighs, milk vs oat milk). Never change items just for style or capitalisation. Keep the existing quantity when it doesn't change.
-Each line appears in at most one proposal. If the list is already tidy, return an empty array; silence is better than noise. At most 15 proposals.`;
+Never merge different products, even similar ones: lemons vs limes, chicken breasts vs chicken thighs, milk vs oat milk, red onion vs green onion, potatoes vs sweet potatoes. Never merge items just because they'd be cooked together or sit in the same aisle (eggs + ramen, yogurt + spinach): a merge means it's literally the same thing written twice.
+Never change items just for style or capitalisation. Keep the existing quantity when it doesn't change.
+Each line appears in at most one proposal. Only propose what you're sure of; if in doubt, leave it out. If the list is already tidy, return an empty array; silence is better than noise. At most 15 proposals. The reason is a plain description of the change, never commentary.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return preflight(req);
@@ -118,7 +120,11 @@ Deno.serve(async (req) => {
     if (p.kind === "fix") {
       const it = items[idx[0]];
       if (it.name === name && (it.quantity ?? null) === quantity) continue;
+      if (!safeFix(it.name, name)) continue;
+    } else if (!safeMerge(idx.map((i) => items[i].name), name)) {
+      continue; // e.g. "Green onion" + "Red onion", "Eggs" + "Ramen"
     }
+    if (soundsUnsure(name, quantity ?? "", p.reason)) continue; // the model second-guessing itself
     idx.forEach((i) => used.add(i));
     proposals.push({
       kind: p.kind,

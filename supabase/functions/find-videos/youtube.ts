@@ -45,12 +45,29 @@ export const MAX_SECONDS = 45 * 60;
 // deno-lint-ignore no-explicit-any
 type Json = any;
 
+/** Main proteins: a video featuring one the meal doesn't use is a different dish. */
+const PROTEINS = [
+  "chicken", "beef", "steak", "pork", "bacon", "sausage", "lamb", "turkey", "ham", "meatball",
+  "shrimp", "prawn", "salmon", "tuna", "cod", "fish", "tofu", "tempeh", "chickpea", "lentil",
+];
+
+/** Fewer views than this is too little signal that a recipe works. */
+export const MIN_VIEWS = 1000;
+
 /**
  * Joins search results (ranked by YouTube's relevance) with video details,
  * drops Shorts / very long videos, and nudges up videos whose title mentions
- * the meal's own ingredients. Returns at most [limit].
+ * the meal's own ingredients. Videos featuring a main protein the meal doesn't
+ * use (chicken in a chickpea dish) or with under [MIN_VIEWS] views are left
+ * out too, as long as at least three others remain. Returns at most [limit].
  */
-export function pickVideos(search: Json, details: Json, ingredients: string[], limit = 5): Video[] {
+export function pickVideos(
+  search: Json,
+  details: Json,
+  ingredients: string[],
+  limit = 5,
+  mealName = "",
+): Video[] {
   const byId = new Map<string, Json>();
   for (const d of details?.items ?? []) if (typeof d?.id === "string") byId.set(d.id, d);
 
@@ -63,7 +80,11 @@ export function pickVideos(search: Json, details: Json, ingredients: string[], l
     ),
   ];
 
-  const scored: { v: Video; score: number }[] = [];
+  // Whole words (plural ok), so "ham" doesn't match "hamburger" or "cod" "acode".
+  const word = (p: string) => new RegExp(`\\b${p}(?:e?s)?\\b`);
+  const own = [mealName, ...ingredients].join(" ").toLowerCase();
+  const usesProtein = (p: string) => word(p).test(own);
+  const scored: { v: Video; score: number; suspect: boolean }[] = [];
   (search?.items ?? []).forEach((item: Json, rank: number) => {
     const id = item?.id?.videoId;
     const d = byId.get(id);
@@ -79,9 +100,11 @@ export function pickVideos(search: Json, details: Json, ingredients: string[], l
     const mentions = words.filter((w) => t.includes(w)).length;
     // YouTube's order matters most; ingredient mentions and popularity break ties.
     const score = -rank + 1.5 * Math.min(mentions, 3) + Math.log10(views + 1) / 2;
+    const otherProtein = PROTEINS.some((p) => word(p).test(t) && !usesProtein(p));
     const thumbs = sn.thumbnails ?? {};
     scored.push({
       score,
+      suspect: otherProtein || views < MIN_VIEWS,
       v: {
         id,
         title,
@@ -93,7 +116,11 @@ export function pickVideos(search: Json, details: Json, ingredients: string[], l
       },
     });
   });
-  return scored.sort((a, b) => b.score - a.score).slice(0, limit).map((s) => s.v);
+  scored.sort((a, b) => b.score - a.score);
+  const good = scored.filter((s) => !s.suspect);
+  // Prefer the trustworthy ones; fall back so a niche meal still gets something.
+  const picked = good.length >= 3 ? good : [...good, ...scored.filter((s) => s.suspect)];
+  return picked.slice(0, limit).map((s) => s.v);
 }
 
 const STOP = new Set(["fresh", "large", "small", "ground", "chopped", "dried", "whole", "boneless", "skinless", "about", "with"]);

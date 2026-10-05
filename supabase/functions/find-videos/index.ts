@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       ? await youtube("videos", { part: "snippet,contentDetails,statistics", id: ids.join(",") }, key)
       : { items: [] };
     const ingredients = (recipe.recipe_ingredients as { name: string }[]).map((i) => i.name);
-    const videos = pickVideos(search, details, ingredients);
+    const videos = pickVideos(search, details, ingredients, 5, recipe.name);
 
     const { error: cacheErr } = await adminClient().from("recipe_videos").upsert({
       recipe_id: recipe.id,

@@ -64,3 +64,54 @@ test("limit and missing details", () => {
   assert.deepEqual(pickVideos(search, details, [], 1).map((x) => x.id), ["a"]);
   assert.deepEqual(pickVideos({}, {}, []), []);
 });
+
+test("leaves out other proteins and tiny channels when there are enough good videos", () => {
+  const search = {
+    items: [s("chick", "x"), s("tiny", "x"), s("a", "x"), s("b", "x"), s("c", "x")],
+  };
+  const details = {
+    items: [
+      d("chick", "PT6M", 50000, "Sheet pan harissa chicken"),
+      d("tiny", "PT6M", 11, "Harissa chickpeas"),
+      d("a", "PT6M", 5000, "Crispy harissa chickpeas"),
+      d("b", "PT6M", 5000, "Roasted chickpea sheet pan"),
+      d("c", "PT6M", 5000, "Harissa sweet potato traybake"),
+    ],
+  };
+  const v = pickVideos(search, details, ["Chickpeas", "Harissa paste", "Sweet potato"], 5, "Harissa chickpeas");
+  assert.deepEqual(v.map((x) => x.id).sort(), ["a", "b", "c"]);
+});
+
+test("falls back to suspect videos for a niche meal", () => {
+  const search = { items: [s("chick", "x"), s("a", "x")] };
+  const details = { items: [d("chick", "PT6M", 50000, "Chicken thing"), d("a", "PT6M", 5000, "Chickpea thing")] };
+  const v = pickVideos(search, details, ["Chickpeas"], 5, "Chickpea thing");
+  assert.deepEqual(v.map((x) => x.id), ["a", "chick"]);
+});
+
+test("a protein the meal does use is fine", () => {
+  const search = { items: [s("a", "x"), s("b", "x"), s("c", "x")] };
+  const details = {
+    items: [d("a", "PT6M", 5000, "Chicken taco bowl"), d("b", "PT6M", 5000, "Taco bowl"), d("c", "PT6M", 5000, "Beef taco bowl")],
+  };
+  const v = pickVideos(search, details, ["Chicken thighs", "Rice"], 5, "Chicken taco bowls");
+  assert.deepEqual(v.map((x) => x.id), ["a", "b", "c"]);
+});
+
+test("protein words match whole words only", () => {
+  const search = { items: [s("a", "x"), s("b", "x"), s("c", "x")] };
+  const details = {
+    items: [d("a", "PT6M", 5000, "Smash burger, not hamburger helper"), d("b", "PT6M", 5000, "Shrimp tacos"), d("c", "PT6M", 5000, "Fish tacos")],
+  };
+  // "hamburger" doesn't count as ham; shrimp (plural-free) and fish are used.
+  const v = pickVideos(search, details, ["Shrimp", "White fish fillets"], 5, "Seafood tacos");
+  assert.deepEqual(v.map((x) => x.id).sort(), ["a", "b", "c"]); // none left out (order follows ingredient mentions)
+  const v2 = pickVideos(
+    { items: [s("p", "x"), s("q", "x"), s("r", "x"), s("z", "x")] },
+    { items: [d("p", "PT6M", 5000, "Chickpeas"), d("q", "PT6M", 5000, "Chickpea curry"), d("r", "PT6M", 5000, "Chickpeas 3 ways"), d("z", "PT6M", 5000, "Chicken curry")] },
+    ["Chickpeas"],
+    5,
+    "Chickpea curry",
+  );
+  assert.deepEqual(v2.map((x) => x.id), ["p", "q", "r"]);
+});

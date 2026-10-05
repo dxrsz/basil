@@ -62,3 +62,6 @@ tool/splash/dancing_cat*.gif
 
 # Vercel
 .vercel/
+
+# Agent worktrees (local only)
+.claude/worktrees/

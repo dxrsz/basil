@@ -129,6 +129,47 @@ class PlannerRepository {
     return plan;
   }
 
+  /// "Nope!": a replacement for `week[index]` that fixes [reason]. The server
+  /// also remembers the reason (and may update the caller's taste profile,
+  /// returned as `learned` so it can be undone).
+  Future<({MealPlan plan, NopeLearned? learned})> nope(
+    String listId,
+    List<MealIdea> week,
+    int index,
+    NopeReason reason, {
+    List<String> avoid = const [],
+  }) async {
+    final res = await _db.functions.invoke(
+      'plan-meals',
+      body: {
+        'list_id': listId,
+        'mode': 'nope',
+        'week': week.map((m) => m.toJson()).toList(),
+        'index': index,
+        'reason': reason.toJson(),
+        'avoid': avoid,
+      },
+    );
+    final data = res.data as Map<String, dynamic>;
+    return (plan: MealPlan.fromJson(data), learned: NopeLearned.fromJson(data['learned']));
+  }
+
+  /// Undoes what a "Nope!" saved to the profile.
+  Future<void> undoNope(NopeLearned learned) async {
+    final p = await fetchTasteProfile();
+    if (p == null) return;
+    await saveTasteProfile(
+      learned.kind == 'ingredient'
+          ? p.copyWith(
+              dislikes: [
+                for (final d in p.dislikes)
+                  if (d.toLowerCase() != learned.value) d,
+              ],
+            )
+          : p.copyWith(spice: int.tryParse(learned.value) ?? p.spice),
+    );
+  }
+
   /// 2-3 dinners that use up what they [have].
   Future<MealPlan> tonight(String listId, List<String> have) =>
       _plan({'list_id': listId, 'mode': 'tonight', 'have': have});

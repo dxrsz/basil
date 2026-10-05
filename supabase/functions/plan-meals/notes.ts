@@ -13,6 +13,7 @@ export type Meal = {
   ingredients: Ingredient[];
   reuse_note: string | null;
   day?: string;
+  nope_guesses?: { label: string; kind: string; value: string }[];
 };
 
 /** Loose grocery-name key: "Limes" == "lime", "Tomatoes" == "tomato". */

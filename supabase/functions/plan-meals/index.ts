@@ -5,12 +5,16 @@
 //   -> { summary, meals: [Meal] }            one per dinner this week
 // POST { list_id, mode: "swap",  week: [Meal], index, avoid?: string[] }
 // POST { list_id, mode: "nudge", week: [Meal], index, nudge: string }
+// POST { list_id, mode: "nope",  week: [Meal], index, reason: { kind, label, value? }, avoid?: string[] }
 //   -> { summary, meals: [Meal], week_notes } one replacement for week[index],
 //                                             plus fresh reuse notes for every night
+//      ("nope" also returns `learned`: what was saved to the caller's taste
+//      profile, e.g. { kind: "ingredient", value: "tofu" }, so the app can undo it)
 // POST { list_id, mode: "tonight", have: string[] }
 //   -> { summary, meals: [Meal] }            2-3 ideas that use up what they have
 //
-// Meal = { name, pitch, minutes, effort, appliance, ingredients: [{ name, quantity, perishable }], reuse_note, day }
+// Meal = { name, pitch, minutes, effort, appliance, ingredients: [{ name, quantity, perishable }], reuse_note, day,
+//          nope_guesses: [{ label, kind, value }] }   Lamar's guesses at why someone might say "Nope!" to it
 //
 // Sharing perishables across the week is the planner's main trick. The model
 // commits to which perishables it will share before it picks meals (schema
@@ -27,7 +31,17 @@ import { structured } from "../_shared/openai.ts";
 import { type Meal, reuseNotes, usesUp } from "./notes.ts";
 import { violations } from "./safety.ts";
 
-type Plan = { shared_perishables: string[]; meals: Omit<Meal, "reuse_note">[]; summary: string };
+type Plan = {
+  shared_perishables: string[];
+  meals: Omit<Meal, "reuse_note">[];
+  summary: string;
+  learned_dislike: string | null;
+};
+
+/** Why a meal got a "Nope!". Ingredient and spice reasons change the profile. */
+const NOPE_KINDS = ["ingredient", "spice", "cuisine", "effort", "heavy", "light", "recent", "mood", "other"] as const;
+type NopeKind = (typeof NOPE_KINDS)[number];
+type NopeReason = { kind: NopeKind; label: string; value: string };
 
 type Context = {
   household: {
@@ -49,6 +63,7 @@ type Context = {
   disliked: string[];
   passed_on: string[];
   nudges: string[];
+  nope_reasons: { kind: NopeKind; count: number; examples: string[] | null }[];
   recent: string[];
 };
 
@@ -69,7 +84,9 @@ export function daysFor(n: number): string[] {
 }
 
 const APPLIANCES: Record<string, string> = {
-  oven: "oven / sheet pan",
+  oven: "oven",
+  microwave: "microwave",
+  toaster_oven: "toaster oven",
   air_fryer: "air fryer",
   slow_cooker: "slow cooker",
   pressure_cooker: "Instant Pot / pressure cooker",
@@ -110,7 +127,7 @@ const ingredientSchema = {
 const mealSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["name", "pitch", "minutes", "effort", "appliance", "ingredients"],
+  required: ["name", "pitch", "minutes", "effort", "appliance", "ingredients", "nope_guesses"],
   properties: {
     name: { type: "string", description: "Short, appetising meal name, 2-5 words, e.g. 'Chicken taco bowls'" },
     pitch: { type: "string", description: "One friendly line selling the meal, at most 14 words" },
@@ -125,13 +142,28 @@ const mealSchema = {
       description: "The groceries for this meal, 4-12 items; skip salt, pepper, water, cooking oil",
       items: ingredientSchema,
     },
+    nope_guesses: {
+      type: "array",
+      description:
+        "1-3 SPECIFIC reasons someone might turn THIS meal down, most likely first, each tied to this meal: a polarising ingredient in it (tofu, mushrooms, cilantro, olives, fish…), its spiciness if it's spicy, or its cuisine. Not generic reasons like effort or heaviness (the app offers those).",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["label", "kind", "value"],
+        properties: {
+          label: { type: "string", description: "What they'd tap, 2-4 words, e.g. 'Not into tofu', 'Too spicy', 'Not feeling Thai'" },
+          kind: { type: "string", enum: ["ingredient", "spice", "cuisine"] },
+          value: { type: "string", description: "The ingredient as on a shopping list ('tofu'), or the cuisine ('Thai'); '' for spice" },
+        },
+      },
+    },
   },
 };
 
 const planSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["shared_perishables", "meals", "summary"],
+  required: ["shared_perishables", "meals", "learned_dislike", "summary"],
   properties: {
     shared_perishables: {
       type: "array",
@@ -140,6 +172,11 @@ const planSchema = {
       items: { type: "string" },
     },
     meals: { type: "array", items: mealSchema },
+    learned_dislike: {
+      type: ["string", "null"],
+      description:
+        "Only when their \"Nope!\" reason (given in the request) says they don't like a particular food: that food, 1-3 words as on a shopping list (e.g. 'olives'). Otherwise null.",
+    },
     summary: {
       type: "string",
       description:
@@ -178,7 +215,7 @@ function describe(ctx: Context): string {
     lines.push(h.leftovers ? "Leftovers are welcome (a meal can be cooked big)." : "They don't like leftovers; size each meal for one sitting.");
     if (h.batch_cook) lines.push("They batch-cook on Sundays: something prepped Sunday can feed a weeknight.");
     const have = h.appliances.map((a) => APPLIANCES[a] ?? a);
-    lines.push(`Appliances: ${have.length ? have.join(", ") : "stovetop only"}.`);
+    lines.push(`Appliances: stovetop${have.length ? `, ${have.join(", ")}` : " only"}.`);
     if (h.want_more.length) lines.push(`Wants to use more: ${h.want_more.map((a) => APPLIANCES[a] ?? a).join(", ")}.`);
   } else {
     lines.push("Household: 2 people. Weeknight time budget: 30 minutes. Appliances: oven, stovetop.");
@@ -192,9 +229,24 @@ function describe(ctx: Context): string {
   if (ctx.disliked.length) lines.push(`Meals they didn't enjoy (avoid similar): ${ctx.disliked.join(", ")}.`);
   if (ctx.passed_on.length) lines.push(`Recently passed on: ${ctx.passed_on.join(", ")}.`);
   if (ctx.nudges.length) lines.push(`They often ask for: ${ctx.nudges.join(", ")}.`);
+  for (const r of ctx.nope_reasons ?? []) {
+    const times = r.count > 1 ? ` (${r.count} times lately)` : "";
+    const hint = NOPE_HINTS[r.kind];
+    if (hint) lines.push(`${hint}${times}.`);
+    else if (r.examples?.length) lines.push(`They've turned meals down saying: ${r.examples.map((e) => `"${e}"`).join(", ")}${times}.`);
+  }
   if (ctx.recent.length) lines.push(`Already had in the last two weeks (don't repeat): ${ctx.recent.join(", ")}.`);
   return lines.join("\n");
 }
+
+// How remembered "Nope!" reasons steer future plans. Ingredient and spice
+// reasons aren't here: they're already in the dislikes and spice level.
+const NOPE_HINTS: Partial<Record<NopeKind, string>> = {
+  effort: "They've turned meals down as too much work: favour simpler, quicker dinners",
+  heavy: "They've turned meals down as too heavy: favour lighter dinners",
+  light: "They've turned meals down as too light: favour heartier, more filling dinners",
+  recent: "They've turned meals down for being too similar to recent ones: favour variety",
+};
 
 function weekText(week: Meal[]): string {
   return week.map((m, i) =>
@@ -224,7 +276,61 @@ function cleanMeal(v: unknown): Meal | null {
     ingredients,
     reuse_note: str(m.reuse_note, 120) || null,
     day: str(m.day, 20) || undefined,
+    nope_guesses: cleanGuesses(m.nope_guesses),
   };
+}
+
+function cleanGuesses(v: unknown): NopeReason[] {
+  return (Array.isArray(v) ? v : []).slice(0, 3).map((x) => {
+    const g = (x ?? {}) as Record<string, unknown>;
+    const kind = NOPE_KINDS.includes(g.kind as NopeKind) ? (g.kind as NopeKind) : "other";
+    const value = str(g.value, 40);
+    // Ingredients are matched against dislikes in lowercase; cuisines keep their name ("Thai").
+    return { kind, label: str(g.label, 40), value: kind === "ingredient" ? value.toLowerCase() : kind === "spice" ? "" : value };
+  }).filter((g) => g.label && (g.kind !== "ingredient" || g.value));
+}
+
+function cleanReason(v: unknown): NopeReason | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  if (!NOPE_KINDS.includes(r.kind as NopeKind)) return null;
+  const kind = r.kind as NopeKind;
+  const value = str(r.value, 40);
+  const reason = { kind, label: str(r.label, 200), value: kind === "ingredient" ? value.toLowerCase() : value };
+  if (!reason.label || (reason.kind === "ingredient" && !reason.value)) return null;
+  return reason;
+}
+
+type Learned = { kind: "ingredient"; value: string } | { kind: "spice"; value: string } | null;
+
+/**
+ * Saves a "Nope!" to the caller's own taste profile (RLS: users can only write
+ * their own row): an ingredient joins their dislikes, "too spicy" lowers their
+ * spice level by one. Returns what changed so the app can offer Undo.
+ */
+async function rememberInProfile(
+  client: ReturnType<typeof userClient>,
+  userId: string,
+  reason: { kind: "ingredient" | "spice"; value: string },
+): Promise<Learned> {
+  const { data: tp } = await client.from("taste_profiles").select("dislikes, spice").eq("user_id", userId).maybeSingle();
+  if (reason.kind === "ingredient") {
+    const dislikes: string[] = tp?.dislikes ?? [];
+    if (dislikes.some((d) => d.toLowerCase() === reason.value)) return null;
+    const next = [...dislikes, reason.value].slice(-30);
+    const { error: e } = tp
+      ? await client.from("taste_profiles").update({ dislikes: next }).eq("user_id", userId)
+      : await client.from("taste_profiles").insert({ user_id: userId, dislikes: next });
+    if (e) throw e;
+    return { kind: "ingredient", value: reason.value };
+  }
+  const old = tp?.spice ?? 1;
+  if (old <= 0) return null;
+  const { error: e } = tp
+    ? await client.from("taste_profiles").update({ spice: old - 1 }).eq("user_id", userId)
+    : await client.from("taste_profiles").insert({ user_id: userId, spice: old - 1 });
+  if (e) throw e;
+  return { kind: "spice", value: String(old) };
 }
 
 Deno.serve(async (req) => {
@@ -245,8 +351,8 @@ Deno.serve(async (req) => {
   const listId = str(body.list_id, 64);
   const mode = body.mode;
   if (!listId) return error("list_id is required");
-  if (mode !== "week" && mode !== "swap" && mode !== "nudge" && mode !== "tonight") {
-    return error("mode must be week, swap, nudge or tonight");
+  if (mode !== "week" && mode !== "swap" && mode !== "nudge" && mode !== "nope" && mode !== "tonight") {
+    return error("mode must be week, swap, nudge, nope or tonight");
   }
 
   const week = (Array.isArray(body.week) ? body.week : []).slice(0, 7).map(cleanMeal).filter((m): m is Meal => !!m);
@@ -255,10 +361,12 @@ Deno.serve(async (req) => {
   const avoid = (Array.isArray(body.avoid) ? body.avoid : []).map((s) => str(s, 120)).filter(Boolean).slice(0, 30);
   const have = (Array.isArray(body.have) ? body.have : []).map((s) => str(s, 80)).filter(Boolean).slice(0, 40);
 
-  if ((mode === "swap" || mode === "nudge") && (index < 0 || index >= week.length)) {
+  const reason = cleanReason(body.reason);
+  if ((mode === "swap" || mode === "nudge" || mode === "nope") && (index < 0 || index >= week.length)) {
     return error("index must point at a meal in week");
   }
   if (mode === "nudge" && !nudge) return error("nudge is required");
+  if (mode === "nope" && !reason) return error("reason is required");
   if (mode === "tonight" && have.length === 0) return error("Tell Lamar what you have first");
 
   // RLS (inside planner_context) decides whether they can plan for this list.
@@ -270,6 +378,26 @@ Deno.serve(async (req) => {
 
   const limited = await consumeQuota(auth.user.id, "plan");
   if (limited) return error(limited, 429);
+
+  // "Nope!": remember why before re-planning, and make an ingredient reason a
+  // hard rule for the replacement right away (the safety check enforces it).
+  let learned: Learned = null;
+  if (mode === "nope" && reason) {
+    const target = week[index];
+    if (reason.kind === "ingredient" || reason.kind === "spice") {
+      learned = await rememberInProfile(client, auth.user.id, { kind: reason.kind, value: reason.value });
+    }
+    if (reason.kind === "ingredient" && !ctx.dislikes.includes(reason.value)) ctx.dislikes = [...ctx.dislikes, reason.value];
+    if (reason.kind === "spice" && ctx.spice != null) ctx.spice = Math.max(0, ctx.spice - 1);
+    const { error: logErr } = await client.from("meal_events").insert({
+      list_id: listId,
+      meal_name: target.name,
+      kind: "noped",
+      reason_kind: reason.kind,
+      detail: reason.label.slice(0, 200),
+    });
+    if (logErr) console.warn("plan-meals: couldn't log nope", logErr.message);
+  }
 
   const profile = describe(ctx);
   let prompt: string;
@@ -289,7 +417,8 @@ Deno.serve(async (req) => {
       break;
     }
     case "swap":
-    case "nudge": {
+    case "nudge":
+    case "nope": {
       const target = week[index];
       want = 1;
       const others = week.filter((_, i) => i !== index);
@@ -301,6 +430,12 @@ Deno.serve(async (req) => {
         "",
         mode === "swap"
           ? `Replace ${target.day ?? "this night"}'s "${target.name}" with a completely different idea.`
+          : mode === "nope"
+          ? `They said "Nope!" to ${target.day ?? "this night"}'s "${target.name}". Their reason: "${reason!.label}". ` +
+            "Replace it with a clearly different dinner that fixes that reason. " +
+            (reason!.kind === "other"
+              ? "If their reason says they don't like a particular food, also set learned_dislike to it."
+              : "Set learned_dislike to null.")
           : `Rework ${target.day ?? "this night"}'s "${target.name}" so it is: ${nudge}. Keep the spirit if that still fits; otherwise pick a new dish that does.`,
         "Keep the household's rules. Where it fits, reuse perishables already bought for the other nights (same ingredient names).",
         `Avoid: ${[target.name, ...others.map((m) => m.name), ...avoid].join(", ")}.`,
@@ -330,6 +465,7 @@ Deno.serve(async (req) => {
         ...m,
         reuse_note: null,
         day: days[i] ?? undefined,
+        nope_guesses: cleanGuesses(m.nope_guesses),
       }));
       const broken = meals.flatMap((m) => violations(m, ctx.diets, ctx.dislikes).map((v) => `"${m.name}" (${v})`));
       return { plan, meals, broken };
@@ -371,10 +507,22 @@ Deno.serve(async (req) => {
         });
       }
       case "swap":
-      case "nudge": {
+      case "nudge":
+      case "nope": {
         const next = week.map((m, i) => (i === index ? meals[0] : m));
         const notes = reuseNotes(next, plan.shared_perishables);
-        return json({ summary: plan.summary, meals: [{ ...meals[0], reuse_note: notes[index] }], week_notes: notes });
+        // A typed reason naming a food: only trust it if it's really in what they wrote.
+        const typed = plan.learned_dislike?.trim().toLowerCase();
+        if (mode === "nope" && reason!.kind === "other" && typed && reason!.label.toLowerCase().includes(typed)) {
+          learned = await rememberInProfile(client, auth.user.id, { kind: "ingredient", value: typed.slice(0, 40) })
+            .catch((e) => (console.warn("plan-meals: couldn't save typed dislike", e), null));
+        }
+        return json({
+          summary: plan.summary,
+          meals: [{ ...meals[0], reuse_note: notes[index] }],
+          week_notes: notes,
+          ...(mode === "nope" ? { learned } : {}),
+        });
       }
       case "tonight":
         return json({ summary: plan.summary, meals: meals.map((m) => ({ ...m, reuse_note: usesUp(m, have) })) });

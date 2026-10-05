@@ -274,7 +274,7 @@ class _KitchenProfileFormState extends ConsumerState<KitchenProfileForm> {
 
   Widget _appliances() => _Question(
     title: 'What\'s in your kitchen?',
-    subtitle: 'Tap everything you have. Lamar assumes a stovetop.',
+    subtitle: 'Tap everything you have. Lamar always assumes a stovetop.',
     children: [
       Wrap(
         spacing: 8,

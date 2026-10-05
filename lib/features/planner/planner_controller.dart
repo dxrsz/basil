@@ -89,6 +89,18 @@ class PlannerController extends Notifier<PlannerState> {
     return plan;
   });
 
+  /// Turns a meal down for [reason] and replaces it. The server logs the
+  /// reason; returns what it saved to the user's profile, if anything.
+  Future<NopeLearned?> nope(int index, NopeReason reason) async {
+    NopeLearned? learned;
+    await _rework(index, (card) async {
+      final res = await _repo.nope(listId, _week, index, reason, avoid: card.passed);
+      learned = res.learned;
+      return res.plan;
+    });
+    return learned;
+  }
+
   Future<void> _rework(int index, Future<MealPlan> Function(PlanCard card) fetch) async {
     final card = state.cards[index];
     if (card.status != CardStatus.proposed) return;

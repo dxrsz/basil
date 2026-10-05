@@ -77,6 +77,25 @@ class FakePlanner implements PlannerRepository {
   }
 
   @override
+  Future<({MealPlan plan, NopeLearned? learned})> nope(
+    String listId,
+    List<MealIdea> week,
+    int index,
+    NopeReason reason, {
+    List<String> avoid = const [],
+  }) async {
+    _maybeFail();
+    log.add('nope $index ${reason.kind}:${reason.value} avoid=${avoid.join(',')}');
+    return (
+      plan: MealPlan(
+        summary: '',
+        meals: [idea('Nope ${++swaps}', day: week[index].day)],
+      ),
+      learned: reason.kind == 'ingredient' ? NopeLearned(kind: 'ingredient', value: reason.value) : null,
+    );
+  }
+
+  @override
   Future<void> logEvent(String listId, MealEventKind kind, String mealName, {String? recipeId, String? detail}) async {
     log.add('log ${kind.name} $mealName${detail == null ? '' : ' ($detail)'}');
   }

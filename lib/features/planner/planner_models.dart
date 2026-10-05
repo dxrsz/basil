@@ -19,7 +19,9 @@ const dietChoices = <Choice>[
 ];
 
 const applianceChoices = <Choice>[
-  (key: 'oven', label: 'Oven / sheet pan', emoji: '♨️'),
+  (key: 'oven', label: 'Oven', emoji: '♨️'),
+  (key: 'microwave', label: 'Microwave', emoji: '🍿'),
+  (key: 'toaster_oven', label: 'Toaster oven', emoji: '🍞'),
   (key: 'air_fryer', label: 'Air fryer', emoji: '🌪️'),
   (key: 'slow_cooker', label: 'Slow cooker', emoji: '🐢'),
   (key: 'pressure_cooker', label: 'Instant Pot', emoji: '⏱️'),
@@ -108,7 +110,7 @@ class KitchenSettings {
     this.timeBudget = 30,
     this.leftovers = true,
     this.batchCook = false,
-    this.appliances = const {'oven'},
+    this.appliances = const {'oven', 'microwave'},
     this.wantMore = const {},
   });
 
@@ -189,6 +191,7 @@ class MealIdea {
     this.ingredients = const [],
     this.reuseNote,
     this.day,
+    this.nopeGuesses = const [],
   });
 
   final String name;
@@ -199,6 +202,9 @@ class MealIdea {
   final List<IdeaIngredient> ingredients;
   final String? reuseNote;
   final String? day;
+
+  /// Lamar's guesses at why someone might say "Nope!" to this meal.
+  final List<NopeReason> nopeGuesses;
 
   factory MealIdea.fromJson(Map<String, dynamic> j) => MealIdea(
     name: j['name'] as String,
@@ -211,6 +217,9 @@ class MealIdea {
     ],
     reuseNote: j['reuse_note'] as String?,
     day: j['day'] as String?,
+    nopeGuesses: [
+      for (final g in (j['nope_guesses'] as List? ?? const [])) NopeReason.fromJson(g as Map<String, dynamic>),
+    ],
   );
 
   Map<String, dynamic> toJson() => {
@@ -222,6 +231,7 @@ class MealIdea {
     'ingredients': ingredients.map((i) => i.toJson()).toList(),
     'reuse_note': reuseNote,
     'day': day,
+    'nope_guesses': nopeGuesses.map((g) => g.toJson()).toList(),
   };
 
   MealIdea withNote(String? note, {String? day}) =>
@@ -253,7 +263,76 @@ class MealPlan {
 
 // ------------------------------------------------------------ meal memory
 
-enum MealEventKind { kept, swapped, nudged, added, cooked, rated }
+enum MealEventKind { kept, swapped, nudged, noped, added, cooked, rated }
+
+// ------------------------------------------------------------------ "Nope!"
+
+/// Why someone turned a planned meal down. `ingredient` and `spice` reasons
+/// change their taste profile; the rest are remembered as meal events and
+/// steer future plans (see planner_context / plan-meals).
+class NopeReason {
+  const NopeReason({required this.kind, required this.label, this.value = ''});
+
+  /// ingredient | spice | cuisine | effort | heavy | light | recent | mood | other
+  final String kind;
+  final String label;
+
+  /// The ingredient ("tofu") or cuisine ("Thai"); empty otherwise.
+  final String value;
+
+  factory NopeReason.fromJson(Map<String, dynamic> j) => NopeReason(
+    kind: (j['kind'] as String?) ?? 'other',
+    label: (j['label'] as String?) ?? '',
+    value: (j['value'] as String?) ?? '',
+  );
+
+  Map<String, dynamic> toJson() => {'kind': kind, 'label': label, 'value': value};
+
+  @override
+  bool operator ==(Object other) => other is NopeReason && other.kind == kind && other.value == value;
+
+  @override
+  int get hashCode => Object.hash(kind, value);
+}
+
+/// Reasons that fit any meal, offered after Lamar's meal-specific guesses.
+const generalNopeReasons = [
+  NopeReason(kind: 'effort', label: 'Too much work'),
+  NopeReason(kind: 'heavy', label: 'Too heavy'),
+  NopeReason(kind: 'light', label: 'Too light'),
+  NopeReason(kind: 'recent', label: 'Had it recently'),
+  NopeReason(kind: 'mood', label: 'Just not feeling it'),
+];
+
+/// What a "Nope!" changed in the user's profile, so it can be undone.
+class NopeLearned {
+  const NopeLearned({required this.kind, required this.value});
+
+  /// ingredient (value = the food now disliked) | spice (value = the old level)
+  final String kind;
+  final String value;
+
+  static NopeLearned? fromJson(Object? j) {
+    if (j is! Map) return null;
+    final kind = j['kind'], value = j['value'];
+    if (kind is! String || value is! String) return null;
+    return NopeLearned(kind: kind, value: value);
+  }
+}
+
+/// What Lamar says after a "Nope!", or null if there's nothing worth saying.
+String? nopeAck(NopeReason reason, NopeLearned? learned) {
+  if (learned?.kind == 'ingredient') return 'Got it. Lamar won\'t suggest ${learned!.value} again.';
+  if (learned?.kind == 'spice') return 'Got it. Lamar will keep things milder.';
+  return switch (reason.kind) {
+    'effort' => 'Noted. Lamar will lean towards easier dinners.',
+    'heavy' => 'Noted. Lamar will lean lighter.',
+    'light' => 'Noted. Lamar will lean heartier.',
+    'recent' => 'Noted. Lamar will mix it up more.',
+    'cuisine' => 'Noted. Less ${reason.value.isEmpty ? 'of that' : reason.value} for a while.',
+    _ => null,
+  };
+}
 
 /// One entry in a list's meal memory.
 class MealEvent {

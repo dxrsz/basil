@@ -12,6 +12,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/lamar.dart';
 import 'add_to_list.dart';
 import 'meal_idea_card.dart';
+import 'nope_sheet.dart';
 import 'planner_controller.dart';
 import 'planner_models.dart';
 
@@ -73,6 +74,41 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     );
     if (nudge == null || nudge.trim().isEmpty) return;
     await _try(() => _planner.nudge(index, nudge.trim()));
+  }
+
+  Future<void> _nope(int index) async {
+    final card = ref.read(plannerProvider(widget.listId)).cards[index];
+    final reason = await showModalBottomSheet<NopeReason>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => NopeSheet(idea: card.idea),
+    );
+    if (reason == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final learned = await _planner.nope(index, reason);
+      ref.invalidate(tasteProfileProvider);
+      final ack = nopeAck(reason, learned);
+      if (ack == null) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(ack),
+            action: learned == null
+                ? null
+                : SnackBarAction(
+                    label: 'Undo',
+                    onPressed: () async {
+                      await ref.read(plannerRepositoryProvider).undoNope(learned);
+                      ref.invalidate(tasteProfileProvider);
+                    },
+                  ),
+          ),
+        );
+    } catch (e) {
+      if (mounted) showError(context, friendlyError(e));
+    }
   }
 
   /// One "Got this already?" review per meal; cancelling one stops there.
@@ -141,7 +177,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                 onList: onList.contains(plan.cards[i - 1].recipeId),
                 onKeep: () => _try(() => _planner.keep(i - 1)),
                 onAddToList: _adding ? null : () => _addKeptToList([plan.cards[i - 1]]),
-                onSwap: () => _try(() => _planner.swap(i - 1)),
+                onNope: () => _nope(i - 1),
                 onNudge: () => _nudge(i - 1),
               ),
       );
@@ -183,7 +219,7 @@ class _PlanCardView extends StatelessWidget {
     required this.card,
     required this.onList,
     required this.onKeep,
-    required this.onSwap,
+    required this.onNope,
     required this.onNudge,
     required this.onAddToList,
   });
@@ -192,7 +228,7 @@ class _PlanCardView extends StatelessWidget {
   final PlanCard card;
   final bool onList;
   final VoidCallback onKeep;
-  final VoidCallback onSwap;
+  final VoidCallback onNope;
   final VoidCallback onNudge;
   final VoidCallback? onAddToList;
 
@@ -238,9 +274,9 @@ class _PlanCardView extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 TextButton.icon(
-                  onPressed: working ? null : onSwap,
-                  icon: const Icon(Icons.shuffle, size: 18),
-                  label: const Text('Swap'),
+                  onPressed: working ? null : onNope,
+                  icon: const Icon(Icons.thumb_down_alt_outlined, size: 18),
+                  label: const Text('Nope!'),
                 ),
                 TextButton.icon(
                   onPressed: working ? null : onNudge,
@@ -286,7 +322,9 @@ class _NudgeSheetState extends State<NudgeSheet> {
       'Cheaper',
       'Kid-friendly',
       'More veggies',
-      for (final a in widget.appliances.where((a) => a != 'oven' && a != 'stand_mixer' && a != 'blender'))
+      for (final a in widget.appliances.where(
+        (a) => !const {'oven', 'microwave', 'stand_mixer', 'blender'}.contains(a),
+      ))
         'Use the ${applianceLabel(a).toLowerCase()}',
     ];
     return Padding(

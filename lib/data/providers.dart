@@ -2,11 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/models.dart';
+import 'offline/offline_providers.dart';
 import 'repository.dart';
 
 final supabaseProvider = Provider<SupabaseClient>((ref) => Supabase.instance.client);
 
-final repositoryProvider = Provider<Repository>((ref) => Repository(ref.watch(supabaseProvider)));
+final repositoryProvider = Provider<Repository>(
+  (ref) =>
+      Repository(ref.watch(supabaseProvider), outbox: ref.watch(outboxProvider), cache: ref.watch(rowCacheProvider)),
+);
 
 final enabledProvidersProvider = FutureProvider<Set<OAuthProvider>>((ref) => Repository.enabledProviders());
 

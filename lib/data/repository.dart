@@ -1,20 +1,36 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../config.dart';
 import '../models/models.dart';
 import '../util/categories.dart';
+import '../util/item_merge.dart';
 import 'live_query.dart';
+import 'offline/kv_store.dart';
+import 'offline/outbox.dart';
 
 /// All reads/writes against Supabase. Widgets go through providers.dart;
 /// mutations come straight here.
 class Repository {
-  Repository(this._db);
+  Repository(this._db, {this._outbox, this._cache});
 
   final SupabaseClient _db;
+
+  /// Item changes go through here so they work offline (null: write directly).
+  final Outbox? _outbox;
+
+  /// Last known rows, so screens open (and work) offline.
+  final RowCache? _cache;
+
+  /// For things that need the server (meals, AI): fail fast and kindly offline.
+  void _requireOnline() {
+    if (_outbox != null && !_outbox.online) throw const OfflineException();
+  }
 
   String? get userId => _db.auth.currentUser?.id;
 
@@ -29,7 +45,10 @@ class Repository {
     );
   }
 
-  Future<void> signOut() => _db.auth.signOut();
+  Future<void> signOut() async {
+    await _cache?.clear();
+    await _db.auth.signOut();
+  }
 
   /// OAuth providers switched on in the Supabase dashboard, so the sign-in
   /// screen only offers ones that will work (e.g. Apple before it's set up).
@@ -56,6 +75,7 @@ class Repository {
       column: 'user_id',
       value: uid,
       primaryKey: ['list_id', 'user_id'],
+      cache: _cache,
     ).map((rows) => rows.map((r) => r['list_id'] as String).toList()..sort());
   }
 
@@ -67,6 +87,7 @@ class Repository {
       column: 'id',
       value: ids,
       orderBy: 'created_at',
+      cache: _cache,
     ).map((rows) => rows.map(ShoppingList.fromJson).toList());
   }
 
@@ -96,14 +117,31 @@ class Repository {
   }
 
   Stream<List<Member>> watchMembers(String listId) {
-    return liveRows(_db, table: 'list_members', column: 'list_id', value: listId, primaryKey: ['list_id', 'user_id'])
+    final cacheKey = 'members+profiles|$listId';
+    return liveRows(
+      _db,
+      table: 'list_members',
+      column: 'list_id',
+      value: listId,
+      primaryKey: ['list_id', 'user_id'],
+      cache: _cache,
+    )
     // The realtime payload has no profile data, so re-read with the join.
     .asyncMap((_) async {
-      final rows = await _db
-          .from('list_members')
-          .select('user_id, role, profiles(display_name, avatar_url)')
-          .eq('list_id', listId)
-          .order('joined_at');
+      final List<Map<String, dynamic>> rows;
+      try {
+        rows = await _db
+            .from('list_members')
+            .select('user_id, role, profiles(display_name, avatar_url)')
+            .eq('list_id', listId)
+            .order('joined_at')
+            .timeout(const Duration(seconds: 8));
+      } catch (_) {
+        final cached = _cache?.read(cacheKey); // offline: who was on the list last time
+        if (cached == null) rethrow;
+        return cached.map(Member.fromJson).toList();
+      }
+      _cache?.write(cacheKey, rows);
       return rows.map(Member.fromJson).toList();
     });
   }
@@ -111,13 +149,44 @@ class Repository {
   // ----------------------------------------------------------------- items
 
   Stream<List<Item>> watchItems(String listId) {
-    return liveRows(
-      _db,
-      table: 'items',
-      column: 'list_id',
-      value: listId,
-      orderBy: 'created_at',
-    ).map((rows) => rows.map(Item.fromJson).toList());
+    final rows = liveRows(_db, table: 'items', column: 'list_id', value: listId, orderBy: 'created_at', cache: _cache);
+    final outbox = _outbox;
+    return (outbox == null ? rows : _withOutbox(outbox, listId, rows)).map((rows) {
+      for (final r in rows) {
+        _knownItemLists[r['id'] as String] = listId;
+      }
+      return rows.map(Item.fromJson).toList();
+    });
+  }
+
+  /// Server rows with queued (offline or in-flight) changes applied on top.
+  static Stream<List<Map<String, dynamic>>> _withOutbox(
+    Outbox outbox,
+    String listId,
+    Stream<List<Map<String, dynamic>>> rows,
+  ) {
+    late final StreamController<List<Map<String, dynamic>>> out;
+    StreamSubscription<void>? serverSub, outboxSub;
+    List<Map<String, dynamic>>? latest;
+    void emit() {
+      final r = latest;
+      if (r != null && !out.isClosed) out.add(outbox.apply(listId, r));
+    }
+
+    out = StreamController(
+      onListen: () {
+        serverSub = rows.listen((r) {
+          latest = r;
+          emit();
+        }, onError: out.addError);
+        outboxSub = outbox.changes.listen((_) => emit());
+      },
+      onCancel: () async {
+        await outboxSub?.cancel();
+        await serverSub?.cancel();
+      },
+    );
+    return out.stream;
   }
 
   /// Adds a typed item. If the same item (plural/case-insensitively) is
@@ -125,46 +194,121 @@ class Repository {
   /// quantities are combined; [AddItemResult.merged] says which happened.
   Future<AddItemResult> addItem(String listId, String input) async {
     final parsed = parseItemInput(input);
-    final res = await _db.rpc(
-      'add_item',
-      params: {
-        'p_list_id': listId,
-        'p_name': parsed.name,
-        'p_quantity': parsed.quantity,
-        'p_category': categorize(parsed.name),
-      },
-    );
-    return AddItemResult.fromJson(res as Map<String, dynamic>);
+    final outbox = _outbox;
+    // Offline, or older changes still queued (they must land first): add it
+    // on this device and let the outbox sync it.
+    if (outbox != null && (!outbox.online || outbox.queued.isNotEmpty)) return _addItemLocally(outbox, listId, parsed);
+    try {
+      final res = await _db
+          .rpc(
+            'add_item',
+            params: {
+              'p_list_id': listId,
+              'p_name': parsed.name,
+              'p_quantity': parsed.quantity,
+              'p_category': categorize(parsed.name),
+            },
+          )
+          .timeout(const Duration(seconds: 8));
+      return AddItemResult.fromJson(res as Map<String, dynamic>);
+    } catch (e) {
+      if (outbox == null || !isTransientError(e)) rethrow;
+      outbox.setNetworkAvailable(false); // couldn't reach the server: we're offline
+      return _addItemLocally(outbox, listId, parsed);
+    }
   }
 
-  Future<void> updateItem(String id, {required String name, String? quantity}) {
-    return _db
-        .from('items')
-        .update({
-          'name': name,
-          'quantity': (quantity?.trim().isEmpty ?? true) ? null : quantity!.trim(),
-          'category': categorize(name),
-        })
-        .eq('id', id);
+  Future<void> updateItem(String id, {required String name, String? quantity, String? listId}) {
+    final changes = {
+      'name': name,
+      'quantity': (quantity?.trim().isEmpty ?? true) ? null : quantity!.trim(),
+      'category': categorize(name),
+    };
+    final outbox = _outbox;
+    final list = listId ?? _listOf(id);
+    if (outbox != null && list != null) return outbox.updateItem(list, id, changes);
+    return _db.from('items').update(changes).eq('id', id);
   }
 
-  Future<void> setChecked(String id, bool checked) => _db.from('items').update({'checked': checked}).eq('id', id);
+  Future<void> setChecked(String id, bool checked, {String? listId}) {
+    final outbox = _outbox;
+    final list = listId ?? _listOf(id);
+    if (outbox != null && list != null) return outbox.updateItem(list, id, {'checked': checked});
+    return _db.from('items').update({'checked': checked}).eq('id', id);
+  }
 
-  Future<void> deleteItem(String id) => _db.from('items').delete().eq('id', id);
+  Future<void> deleteItem(String id, {String? listId}) {
+    final outbox = _outbox;
+    final list = listId ?? _listOf(id);
+    if (outbox != null && list != null) return outbox.deleteItem(list, id);
+    return _db.from('items').delete().eq('id', id);
+  }
 
-  Future<void> restoreItem(Item item) => _db.from('items').insert({
-    'id': item.id,
-    'list_id': item.listId,
-    'name': item.name,
-    'quantity': item.quantity,
-    'category': item.category,
-    'checked': item.checked,
-    'recipe_id': item.recipeId,
-    'recipe_ids': item.recipeIds,
-  });
+  Future<void> restoreItem(Item item) {
+    final row = {
+      'id': item.id,
+      'list_id': item.listId,
+      'name': item.name,
+      'quantity': item.quantity,
+      'category': item.category,
+      'checked': item.checked,
+      'recipe_id': item.recipeId,
+      'recipe_ids': item.recipeIds,
+    };
+    final outbox = _outbox;
+    if (outbox != null) return outbox.insertItem({...row, 'created_at': item.createdAt.toUtc().toIso8601String()});
+    return _db.from('items').insert(row);
+  }
 
-  Future<int> clearChecked(String listId) async =>
-      (await _db.rpc('clear_checked_items', params: {'p_list_id': listId})) as int;
+  /// Removes checked items. With [ids] (what the user saw checked) only those
+  /// go, and it works offline; without, everything checked on the server.
+  Future<int> clearChecked(String listId, {Iterable<String>? ids}) async {
+    final outbox = _outbox;
+    if (outbox != null && ids != null) {
+      final targets = ids.toList();
+      await outbox.clearChecked(listId, targets);
+      return targets.length;
+    }
+    return (await _db.rpc('clear_checked_items', params: {'p_list_id': listId})) as int;
+  }
+
+  /// [addItem] without the server: merges into a matching unchecked item this
+  /// device knows about (as `add_item` does), else adds a new one with a
+  /// client-made id so it can be edited or removed before it syncs.
+  Future<AddItemResult> _addItemLocally(Outbox outbox, String listId, ({String name, String? quantity}) parsed) async {
+    final key = normalizeItemName(parsed.name);
+    final known = outbox.apply(listId, _cache?.read('items|list_id|$listId') ?? const [])
+      ..sort((a, b) => '${a['created_at']}'.compareTo('${b['created_at']}'));
+    for (final r in known) {
+      if (r['checked'] == true || normalizeItemName(r['name'] as String) != key) continue;
+      final id = r['id'] as String;
+      final quantity = combineQuantities(r['quantity'] as String?, parsed.quantity);
+      await outbox.updateItem(listId, id, {'quantity': quantity, 'manual': true});
+      return AddItemResult(id: id, merged: true, name: r['name'] as String, quantity: quantity);
+    }
+    final id = const Uuid().v4();
+    await outbox.insertItem({
+      'id': id,
+      'list_id': listId,
+      'name': parsed.name,
+      'quantity': parsed.quantity,
+      'category': categorize(parsed.name),
+      'manual': true,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    return AddItemResult(id: id, merged: false, name: parsed.name, quantity: parsed.quantity);
+  }
+
+  /// item id -> list id for every item seen, so item calls that don't pass a
+  /// list id can still be queued.
+  final _knownItemLists = <String, String>{};
+
+  String? _listOf(String itemId) {
+    for (final op in _outbox?.queued ?? const <OutboxOp>[]) {
+      if (op.id == itemId) return op.listId;
+    }
+    return _knownItemLists[itemId];
+  }
 
   // --------------------------------------------------------------- recipes
 
@@ -195,6 +339,7 @@ class Repository {
     required String name,
     required List<Ingredient> ingredients,
   }) async {
+    _requireOnline();
     final id = await _db.rpc(
       'save_recipe',
       params: {
@@ -273,6 +418,7 @@ class Repository {
   /// Kicks off image generation. The edge function returns immediately and
   /// the finished image arrives through the recipes realtime stream.
   Future<void> generateImage(String recipeId, {bool force = false}) async {
+    _requireOnline();
     await _db.functions.invoke('generate-recipe-image', body: {'recipe_id': recipeId, 'force': force});
   }
 
@@ -282,6 +428,7 @@ class Repository {
     required List<String> dismissed,
     bool autofill = false,
   }) async {
+    _requireOnline();
     final res = await _db.functions.invoke(
       'suggest-ingredients',
       body: {
@@ -316,6 +463,7 @@ class AddItemResult {
 
 /// Turns Supabase exceptions into something worth showing a person.
 String friendlyError(Object e) {
+  if (e is OfflineException) return e.message;
   if (e is PostgrestException) return e.message;
   if (e is FunctionException) {
     final details = e.details;
@@ -324,4 +472,15 @@ String friendlyError(Object e) {
   }
   if (e is AuthException) return e.message;
   return 'Something went wrong. Check your connection and try again.';
+}
+
+/// Thrown at once, without trying, for things that need the server while
+/// we're offline. The shopping list itself keeps working offline.
+class OfflineException implements Exception {
+  const OfflineException([this.message = 'Lamar needs a connection for that. Your list still works offline.']);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

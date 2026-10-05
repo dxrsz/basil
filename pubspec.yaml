@@ -44,6 +44,10 @@ dependencies:
   http: ^1.6.0
   supabase: ^2.16.2
   image_picker: ^1.2.3
+  shared_preferences: ^2.5.5
+  uuid: ^4.6.0
+  connectivity_plus: ^7.3.2
+  wakelock_plus: ^1.8.1
 
 dev_dependencies:
   flutter_test:

@@ -17,6 +17,12 @@ import 'package:supabase/supabase.dart';
 ///
 /// The full result is re-read whenever the channel (re)subscribes, so
 /// anything missed while offline is picked up on reconnect.
+///
+/// With a [cache], the last known rows are emitted as soon as someone listens
+/// (so screens work offline and open instantly), every change is written
+/// back, and a failed re-read keeps showing the cached rows instead of
+/// erroring. The server stays the source of truth: its snapshot replaces the
+/// cached one on every (re)subscribe.
 Stream<List<Map<String, dynamic>>> liveRows(
   SupabaseClient db, {
   required String table,
@@ -25,6 +31,7 @@ Stream<List<Map<String, dynamic>>> liveRows(
   List<String> primaryKey = const ['id'],
   String? orderBy,
   bool ascending = true,
+  LiveCache? cache,
 }) {
   final isList = value is List;
   if (isList && value.isEmpty) return Stream.value(const []);
@@ -37,10 +44,13 @@ Stream<List<Map<String, dynamic>>> liveRows(
   RealtimeChannel? channel;
   var fetching = false;
   final queued = <void Function()>[];
+  final cacheKey = '$table|$column|${isList ? (value.map((v) => '$v').toList()..sort()).join(',') : value}';
+  var haveRows = false;
 
   void emit() {
     if (out.isClosed) return;
     final list = rows.values.toList();
+    if (haveRows) cache?.write(cacheKey, list);
     if (orderBy != null) {
       list.sort((a, b) {
         final c = Comparable.compare(a[orderBy] as Comparable, b[orderBy] as Comparable);
@@ -70,8 +80,10 @@ Stream<List<Map<String, dynamic>>> liveRows(
       rows
         ..clear()
         ..addEntries(data.map((r) => MapEntry(keyOf(r), r)));
+      haveRows = true;
     } catch (e, st) {
-      if (!out.isClosed) out.addError(e, st);
+      // Offline with a cached copy: keep showing it; the next subscribe retries.
+      if (!out.isClosed && !(cache != null && haveRows)) out.addError(e, st);
     } finally {
       fetching = false;
       for (final change in queued) {
@@ -96,6 +108,12 @@ Stream<List<Map<String, dynamic>>> liveRows(
 
   out = StreamController<List<Map<String, dynamic>>>(
     onListen: () {
+      final cached = cache?.read(cacheKey);
+      if (cached != null) {
+        rows.addEntries(cached.map((r) => MapEntry(keyOf(r), r)));
+        haveRows = true;
+        emit();
+      }
       channel = db
           .channel('live:$table:$column:${value.hashCode}:${DateTime.now().microsecondsSinceEpoch}')
           .onPostgresChanges(
@@ -130,4 +148,12 @@ Stream<List<Map<String, dynamic>>> liveRows(
     },
   );
   return out.stream;
+}
+
+/// Somewhere [liveRows] can keep the last rows it saw, keyed by query.
+abstract interface class LiveCache {
+  /// The rows last written for [key], or null if there are none.
+  List<Map<String, dynamic>>? read(String key);
+
+  void write(String key, List<Map<String, dynamic>> rows);
 }

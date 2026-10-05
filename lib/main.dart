@@ -4,6 +4,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config.dart';
+import 'data/offline/offline_providers.dart';
 import 'features/splash/splash_screen.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -30,6 +31,7 @@ class _BootstrapState extends State<_Bootstrap> {
   late final Future<void> _ready = Future.wait([
     if (Config.isConfigured) Supabase.initialize(url: Config.supabaseUrl, publishableKey: Config.supabaseKey),
     Future<void>.delayed(splashMinDuration),
+    initOfflineStorage(),
   ]);
 
   @override
